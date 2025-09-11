@@ -1,0 +1,108 @@
+food_name,calories,healthy_substitute,calories_saved,taste_rating,meal_type,goal,best_time,store_brand,sugar_g,fat_g,carbs_g,protein_g,risky_for,serving_size,food_category
+Dal Tadka,210,Moong Dal Plain,60.0,8.2,Lunch,Balanced,Before 3PM,Homemade,2,8,18,11,—,1 bowl (~200g),Indian Main Dish
+Baingan Bharta,180,Grilled Eggplant Mash,40.0,7.5,Dinner,Weight Loss,Anytime,Homemade,3,7,15,4,—,1 bowl (~150g),Indian Main Dish
+Veg Pulao,380,Brown Rice Veg Bowl,90.0,7.8,Lunch,Weight Loss,Before 2PM,D-Mart,4,15,52,6,"High_BP, Obesity",1 bowl (~250g),Rice-Based
+Matar Paneer,430,Tofu + Peas Curry,130.0,7.9,Lunch,Balanced,Before 8PM,Homemade,6,28,16,14,"High_BP, Obesity",1 bowl (~200g),Indian Main Dish
+Kaju Curry,520,Makhana Curry,160.0,6.5,Dinner,Balanced,Before 7PM,Restaurant,6,38,20,9,"Obesity, High_BP",1 bowl (~200g),Indian Main Dish
+Veg Fried Rice,440,Quinoa Stir Fry,130.0,8.0,Lunch,Balanced,Before 2PM,Homemade,3,20,50,8,High_BP,1 bowl (~250g),Rice-Based
+Dahi Bhalla,350,Moong Dal Dhokla,150.0,7.4,Snack,Weight Loss,Before 5PM,Street Vendor,12,10,34,6,"Diabetes, Obesity",2 pcs (~150g),Snack
+Onion Pakora,360,Baked Veg Cutlet,110.0,7.2,Snack,Balanced,Before 6PM,Local Vendor,1,22,30,5,"Obesity, High_BP",5 pcs (~150g),Fried/Junk
+Sev Puri,320,Sprout Chaat,100.0,7.0,Snack,Weight Loss,Before 5PM,Street Vendor,6,14,40,5,"Diabetes, Obesity",1 plate (~120g),Snack
+Veg Puff,280,Baked Beetroot Patty,110.0,7.3,Snack,Balanced,Before 5PM,Local Bakery,3,18,28,4,Obesity,1 piece (~100g),Snack
+Chocolate Milkshake,340,Low-Fat Cocoa Smoothie,160.0,7.0,Beverage,Weight Loss,Before 5PM,Amul,38,12,42,6,"Diabetes, Obesity",1 glass (~250ml),Beverage
+Jaljeera Soda,60,Lemon Mint Water,30.0,8.0,Beverage,Weight Loss,Anytime,Homemade,2,0,10,0,—,1 glass (~250ml),Beverage
+Banana Smoothie,240,Unsweetened Almond Shake,100.0,7.2,Beverage,Balanced,Before 11AM,Homemade,22,6,32,5,Diabetes,1 glass (~250ml),Beverage
+White Bread Sandwich,350,Brown Bread Sandwich,100.0,7.5,Snack,Weight Loss,Before 6PM,Britannia,5,15,40,8,Obesity,2 slices (~160g),Snack
+Vegetable Momos,280,Steamed Oats Momos,90.0,7.8,Snack,Weight Loss,Before 6PM,Street Vendor,2,8,32,5,Obesity,5 pcs (~150g),Snack
+Butter Chicken,580,Grilled Chicken Curry,180.0,8.5,Dinner,Balanced,Before 9PM,Restaurant,4,36,14,32,"High_BP, Obesity",1 bowl (~250g),Indian Main Dish
+Malai Kofta,510,Lauki Kofta (Baked),160.0,7.2,Dinner,Balanced,Before 8PM,Homemade,5,34,24,7,"Obesity, High_BP",2 koftas (~220g),Indian Main Dish
+Mysore Masala Dosa,480,Plain Ragi Dosa,130.0,7.9,Breakfast,Weight Loss,Before 11AM,Udupi Café,2,20,44,6,High_BP,1 dosa (~220g),Indian Main Dish
+Moong Dal Chilla,190,—,0.0,8.2,Breakfast,Weight Loss,Before 10AM,Homemade,2,5,18,10,—,2 pcs (~150g),Healthy Meal
+Sprout & Veggie Bowl,220,—,0.0,8.8,Dinner,Weight Loss,Anytime,Homemade,1,4,24,14,—,1 bowl (~200g),Healthy Meal
+Chana Masala,280,Moong Curry,80.0,8.2,Lunch,Balanced,Anytime,Homemade,3,8,34,12,—,1 bowl (~200g),Indian Main Dish
+Bhindi Masala,230,Tinda Curry,60.0,7.4,Lunch,Weight Loss,Anytime,Homemade,3,10,20,5,—,1 bowl (~180g),Indian Main Dish
+Aloo Gobi,260,Baked Gobi Stir Fry,90.0,7.6,Lunch,Balanced,Before 3PM,Homemade,4,12,26,4,—,1 bowl (~180g),Indian Main Dish
+Kadhai Paneer,460,Grilled Paneer Bhurji,150.0,8.5,Dinner,Balanced,Before 8PM,Homemade,4,30,18,18,"High_BP, Obesity",1 bowl (~200g),Indian Main Dish
+Palak Paneer,370,Saag Tofu,110.0,7.8,Dinner,Balanced,Before 8PM,Homemade,2,22,14,17,High_BP,1 bowl (~200g),Indian Main Dish
+Tamatar Shorba,120,Clear Veg Soup,60.0,7.9,Snack,Weight Loss,Before 5PM,Homemade,3,4,18,2,—,1 bowl (~200ml),Indian Main Dish
+Vegetable Kurma,420,Coconut-Free Kurma,140.0,7.2,Dinner,Balanced,Before 8PM,Restaurant,6,28,26,8,"Obesity, High_BP",1 bowl (~200g),Indian Main Dish
+Sarson da Saag,300,Spinach-Mustard Lite,100.0,8.4,Dinner,Balanced,Anytime,Homemade,2,18,20,10,High_BP,1 bowl (~200g),Indian Main Dish
+Lemon Rice,320,Brown Lemon Rice,80.0,8.0,Lunch,Balanced,Before 2PM,Homemade,2,14,38,6,Obesity,1 bowl (~200g),Rice-Based
+Pindi Chole,400,Chole without Oil,150.0,7.3,Dinner,Balanced,Before 8PM,Homemade,4,24,30,12,"High_BP, Obesity",1 bowl (~200g),Indian Main Dish
+Veg Spring Rolls,340,Rice Paper Veg Wraps,120.0,7.5,Snack,Weight Loss,Before 6PM,Local Bakery,4,18,34,6,"Obesity, High_BP",2 rolls (~150g),Snack
+Bhelpuri,250,Masala Makhana Bowl,100.0,7.8,Snack,Weight Loss,Before 6PM,Street Vendor,5,7,38,4,Obesity,1 plate (~150g),Snack
+Corn Chaat,200,Cucumber Sprout Mix,60.0,7.6,Snack,Balanced,Anytime,Homemade,6,6,28,5,—,1 bowl (~150g),Snack
+Kurkure (Masala),450,Roasted Chickpeas,200.0,6.5,Snack,Weight Loss,Before 5PM,Packaged,2,30,40,4,"High_BP, Obesity",1 pack (~100g),Fried/Junk
+Mixture Namkeen,480,Roasted Poha Mix,150.0,6.7,Snack,Balanced,Before 6PM,Haldiram's,2,32,42,5,"Obesity, High_BP",1 pack (~120g),Fried/Junk
+Cheesecake Slice,430,Greek Yogurt Fruit Cup,180.0,6.8,Dessert,Balanced,Before 4PM,Bakery,24,30,35,5,"Diabetes, Obesity",1 slice (~130g),Dessert
+Rasmalai,380,Sugar-Free Rasgulla,140.0,7.0,Dessert,Balanced,Before 5PM,Haldiram's,32,20,30,6,"Diabetes, High_BP",2 pcs (~130g),Dessert
+Barfi (Kaju),320,Almond Laddoo,100.0,7.2,Dessert,Balanced,Before 6PM,Local Sweet Shop,18,22,25,5,Diabetes,2 pcs (~100g),Dessert
+Halwa (Gajar),360,Ragi + Dates Halwa,120.0,7.4,Dessert,Balanced,Before 5PM,Homemade,22,18,36,5,"Diabetes, Obesity",1 bowl (~150g),Dessert
+Ice Cream (Chocolate),250,Frozen Banana Whip,100.0,7.0,Dessert,Balanced,Before 6PM,Amul,26,15,24,3,Diabetes,1 scoop (~90g),Dessert
+Lassi (Salted),160,Buttermilk,60.0,8.0,Beverage,Weight Loss,Before 5PM,Homemade,6,8,12,6,—,1 glass (~250ml),Beverage
+Chaas (Buttermilk),90,Spiced Water with Mint,60.0,7.5,Beverage,Weight Loss,Anytime,Homemade,2,4,6,3,—,1 glass (~250ml),Beverage
+Green Tea (Sweetened),80,Green Tea (Plain),70.0,7.8,Beverage,Weight Loss,Anytime,Packaged,12,0,15,0,Diabetes,1 cup (~200ml),Beverage
+Coffee (with sugar),150,Black Coffee,130.0,6.5,Beverage,Weight Loss,Before 6PM,Homemade,18,6,15,2,Diabetes,1 cup (~200ml),Beverage
+Masala Chai,120,Sugar-Free Chai,70.0,7.0,Beverage,Weight Loss,Before 6PM,Homemade,10,5,12,2,Diabetes,1 cup (~200ml),Beverage
+Bread Pakora,420,Baked Veg Sandwich,160.0,7.0,Snack,Balanced,Before 6PM,Homemade,4,28,32,6,"High_BP, Obesity",1 piece (~150g),Fried/Junk
+Medu Vada,340,Steamed Dal Idli,140.0,7.2,Breakfast,Balanced,Before 11AM,Udupi Café,2,22,30,4,Obesity,2 pcs (~150g),Breakfast Item
+Masala Oats,230,Oats + Veg Clear Soup,60.0,7.5,Breakfast,Weight Loss,Before 11AM,Quaker,2,8,28,6,—,1 bowl (~180g),Breakfast Item
+Vegetable Upma,280,Millet Upma,90.0,7.6,Breakfast,Balanced,Before 11AM,Homemade,3,10,35,6,—,1 bowl (~180g),Breakfast Item
+Idli (2 pcs),150,Ragi Idli,60.0,7.8,Breakfast,Weight Loss,Before 10AM,Homemade,1,2,28,5,—,2 pcs (~140g),Breakfast Item
+Oats Pancakes,210,Ragi Pancakes,70.0,7.8,Breakfast,Weight Loss,Before 11AM,Homemade,5,6,32,6,—,2 pcs (~150g),Breakfast
+Poha,250,Quinoa Poha,90.0,8.0,Breakfast,Balanced,Before 10AM,Homemade,3,8,38,5,—,1 bowl (~180g),Breakfast
+Bread Omelet,320,Egg White Omelet + Brown,110.0,8.2,Breakfast,High Protein,Before 11AM,Local Vendor,2,16,28,14,High_BP,2 slices + omelet (~200g),Breakfast
+Vegetable Sandwich,280,Multigrain Veg Sandwich,80.0,7.6,Breakfast,Weight Loss,Before 11AM,Bakery,4,10,36,7,—,2 slices (~150g),Breakfast
+Paneer Paratha,420,Ragi Veg Paratha,120.0,7.9,Breakfast,Balanced,Before 11AM,Homemade,2,24,36,12,"High_BP, Obesity",2 pcs (~200g),Breakfast
+Idiyappam with Curry,350,Ragi Idiyappam,100.0,7.5,Breakfast,Balanced,Before 11AM,South Indian,3,12,50,6,Obesity,1 plate (~200g),Breakfast
+Caesar Salad,280,Low-Fat Caesar Salad,90.0,8.5,Lunch,Weight Loss,Anytime,Restaurant,3,16,20,10,—,1 bowl (~200g),Healthy Meal
+Quinoa Salad Bowl,260,Sprout Salad,80.0,8.2,Lunch,Weight Loss,Anytime,Homemade,2,9,32,9,—,1 bowl (~200g),Healthy Meal
+Greek Yogurt Parfait,200,Low-Sugar Yogurt Parfait,60.0,8.4,Snack,Weight Loss,Before 6PM,Packaged,12,6,24,8,Diabetes,1 cup (~150g),Healthy Snack
+Sprouted Moong Salad,180,—,0.0,8.6,Snack,Weight Loss,Anytime,Homemade,2,2,24,12,—,1 bowl (~150g),Healthy Snack
+Avocado Toast,320,Hummus Toast,100.0,8.3,Snack,Balanced,Before 11AM,Homemade,2,18,30,6,Obesity,2 slices (~150g),Healthy Snack
+Chicken Salad,300,Grilled Veg Salad,120.0,8.5,Lunch,Weight Loss,Anytime,Homemade,2,14,12,24,High_BP,1 bowl (~200g),Healthy Meal
+Vegetable Pasta (White),480,Whole Wheat Veg Pasta,140.0,7.2,Dinner,Balanced,Before 8PM,Restaurant,5,22,60,12,Obesity,1 plate (~250g),International
+Spaghetti Bolognese,520,Lentil Spaghetti,160.0,8.0,Dinner,Balanced,Before 8PM,Restaurant,6,24,64,16,"Obesity, High_BP",1 plate (~250g),International
+Margherita Pizza,600,Whole Wheat Veg Pizza,180.0,8.4,Dinner,Balanced,Before 8PM,Domino’s,5,24,72,18,Obesity,2 slices (~250g),International
+Veggie Burger,520,Grilled Paneer Burger,150.0,8.0,Dinner,Balanced,Before 8PM,McDonald’s,6,28,58,14,Obesity,1 burger (~250g),International
+Chicken Burger,580,Grilled Chicken Wrap,180.0,8.2,Dinner,Balanced,Before 8PM,Burger King,4,32,50,20,"High_BP, Obesity",1 burger (~270g),International
+French Toast,340,Multigrain French Toast,100.0,7.5,Breakfast,Balanced,Before 11AM,Homemade,8,14,44,10,"Obesity, Diabetes",2 slices (~180g),Breakfast
+Chicken Wrap,460,Whole Wheat Veg Wrap,140.0,8.1,Lunch,Balanced,Before 7PM,Subway,3,20,48,18,High_BP,1 wrap (~250g),Fast Food
+Shawarma Roll,480,Falafel Wrap,150.0,8.2,Lunch,Balanced,Before 7PM,Street Vendor,4,22,52,16,"High_BP, Obesity",1 roll (~250g),Fast Food
+Fish and Chips,650,Baked Fish + Sweet Potato,200.0,8.0,Dinner,Balanced,Before 8PM,Restaurant,2,34,60,24,"High_BP, Obesity",1 plate (~300g),International
+Fried Rice + Manchurian,580,Quinoa + Veg Balls,180.0,8.2,Dinner,Balanced,Before 8PM,Indo-Chinese,4,26,72,14,High_BP,1 plate (~300g),Fried/Junk
+Fried Maggi,400,Oats Masala Noodles,130.0,7.5,Snack,Balanced,Before 7PM,Nestlé,3,18,52,7,"High_BP, Obesity",1 plate (~200g),Fried/Junk
+Donut (Chocolate),350,Whole Wheat Muffin,120.0,6.8,Dessert,Balanced,Before 5PM,Dunkin’,28,18,40,6,"Diabetes, Obesity",1 pc (~100g),Dessert
+Cold Coffee (Sugar),260,Sugar-Free Cold Brew,100.0,7.2,Beverage,Balanced,Before 5PM,Café Coffee Day,24,12,28,5,Diabetes,1 glass (~250ml),Beverage
+Cola (Soft Drink),140,Sparkling Lemon Water,120.0,6.5,Beverage,Weight Loss,Anytime,Coca-Cola,39,0,39,0,"Diabetes, Obesity",1 can (~330ml),Beverage
+Energy Drink,210,Coconut Water,160.0,6.7,Beverage,Balanced,Before Workout,Red Bull,27,0,28,1,"Diabetes, High_BP",1 can (~250ml),Beverage
+Milkshake (Strawberry),300,Fruit Smoothie,140.0,7.0,Beverage,Balanced,Before 5PM,McDonald’s,38,10,46,6,"Diabetes, Obesity",1 glass (~250ml),Beverage
+Pakora Platter,480,Baked Veg Nuggets,160.0,7.3,Snack,Balanced,Before 6PM,Homemade,3,30,44,8,"Obesity, High_BP",1 plate (~200g),Fried/Junk
+Pizza Combo (Cheese + Cola),850,Veggie Pizza + Lemon Water,250.0,8.0,Dinner,Balanced,Before 8PM,Domino’s,15,40,100,22,"Obesity, High_BP",2 slices + 1 cola (~400g),Fast Food Combo
+Burger + Fries Combo,950,Grilled Burger + Baked Fries,280.0,8.4,Dinner,Balanced,Before 8PM,McDonald’s,12,48,110,28,"Obesity, High_BP",1 combo (~400g),Fast Food Combo
+Fried Chicken Bucket,1200,Grilled Chicken Pieces,400.0,8.0,Dinner,Balanced,Before 8PM,KFC,5,72,80,60,"High_BP, Obesity",1 bucket (~500g),Fried/Junk
+Misal Pav,420,Sprout Misal + Multigrain Pav,130.0,8.0,Breakfast,Balanced,Before 11AM,Local Vendor,4,20,55,14,"High_BP, Obesity",1 plate (~250g),Indian Main Dish
+Pav Bhaji (Butter),480,Veg Stew + Brown Toast,140.0,8.2,Dinner,Balanced,Before 9PM,Local Vendor,6,28,56,12,"Obesity, High_BP",1 plate (~250g),Fast Food
+Pesarattu (Moong Dosa),250,Ragi Dosa,80.0,8.1,Breakfast,Weight Loss,Before 11AM,South Indian,2,8,34,10,—,1 dosa (~200g),Breakfast
+Sabudana Khichdi,380,Millet + Veg Khichdi,120.0,7.5,Breakfast,Balanced,Before 11AM,Homemade,6,14,54,8,Diabetes,1 bowl (~200g),Breakfast
+Thepla,320,Methi + Oats Thepla,100.0,8.0,Breakfast,Weight Loss,Before 11AM,Homemade,3,12,46,9,Obesity,2 pcs (~180g),Breakfast
+Khichdi (Dal+Rice),300,Oats + Moong Khichdi,80.0,8.3,Dinner,Weight Loss,Anytime,Homemade,2,8,50,9,—,1 bowl (~200g),Indian Main Dish
+Bhature + Chole,550,Whole Wheat Chole + Roti,180.0,7.9,Lunch,Balanced,Before 3PM,Street Vendor,5,30,70,15,"High_BP, Obesity",2 pcs + curry (~300g),Indian Main Dish
+Poori + Aloo Sabzi,480,Phulka + Dry Aloo Curry,150.0,7.8,Lunch,Balanced,Before 2PM,Homemade,4,26,60,10,"High_BP, Obesity",3 pooris + curry (~250g),Indian Main Dish
+Egg Curry,350,Boiled Egg Curry (less oil),90.0,8.2,Lunch,High Protein,Anytime,Homemade,2,18,20,20,—,1 bowl (~200g),Indian Main Dish
+Fish Curry (Goan),420,Grilled Fish Curry,120.0,8.5,Lunch,Balanced,Before 3PM,Homemade,2,24,22,22,High_BP,1 bowl (~220g),Indian Main Dish
+Mutton Rogan Josh,540,Lean Mutton Curry,150.0,8.4,Dinner,Balanced,Before 9PM,Restaurant,4,32,30,28,High_BP,1 bowl (~250g),Indian Main Dish
+Prawns Masala,390,Grilled Prawns Curry,100.0,8.3,Dinner,Balanced,Anytime,Homemade,2,18,20,25,—,1 bowl (~220g),Indian Main Dish
+Veg Handi,350,Low-Oil Veg Curry,90.0,7.9,Dinner,Weight Loss,Before 9PM,Restaurant,4,16,45,10,—,1 bowl (~220g),Indian Main Dish
+Paneer Tikka,320,Grilled Tofu Tikka,120.0,8.2,Snack,Weight Loss,Before 8PM,Restaurant,2,18,18,18,"High_BP, Obesity",6 pcs (~180g),Snack
+Veg Frankie Roll,400,Multigrain Wrap + Veg,130.0,8.0,Snack,Balanced,Before 7PM,Street Vendor,4,22,44,10,Obesity,1 roll (~220g),Snack
+Egg Roll (Kolkata),420,Egg White Wrap,140.0,8.1,Snack,High Protein,Before 7PM,Street Vendor,2,24,42,14,High_BP,1 roll (~220g),Snack
+Chicken Kathi Roll,450,Grilled Veg Kathi Roll,150.0,8.3,Snack,Balanced,Before 7PM,Street Vendor,3,26,44,16,"High_BP, Obesity",1 roll (~230g),Snack
+Tandoori Roti,110,Phulka Roti,40.0,8.0,Dinner,Weight Loss,Anytime,Restaurant,1,3,22,3,—,1 pc (~80g),Indian Main Dish
+Veg Thali,650,Mini Thali (less ghee),180.0,8.4,Lunch,Balanced,Before 3PM,Restaurant,8,32,88,20,"High_BP, Obesity",1 thali (~400g),Indian Main Dish
+Rajma Chawal,420,Brown Rice Rajma,120.0,8.5,Lunch,Balanced,Before 3PM,Homemade,4,14,60,14,High_BP,1 bowl (~300g),Indian Main Dish
+Kadhi Pakora,360,Low-Oil Kadhi,100.0,7.8,Lunch,Balanced,Before 2PM,Homemade,5,16,40,9,Obesity,1 bowl (~250g),Indian Main Dish
+Kashmiri Pulao,380,Brown Rice Pulao (lite),110.0,8.0,Lunch,Balanced,Anytime,Homemade,3,12,56,8,High_BP,1 plate (~300g),Rice-Based
+Masoor Dal,250,Moong Dal,70.0,8.2,Lunch,Balanced,Anytime,Homemade,2,6,38,12,—,1 bowl (~200g),Indian Main Dish
+Veg Hakka Noodles,420,Whole Wheat Hakka Noodles,130.0,7.9,Dinner,Balanced,Before 9PM,Restaurant,4,18,60,10,High_BP,1 plate (~300g),Indo-Chinese
+Ragi Idiyappam + Chutney,320,Ragi Idiyappam,90.0,8.1,Breakfast,Balanced,Before 11AM,South Indian,3,10,52,8,—,1 plate (~200g),Breakfast
