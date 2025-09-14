@@ -94,7 +94,7 @@ const SendButton = styled.button`
   margin-left: 0.5rem;
 `;
 
-const Chatbot = ({ goal, onClose }) => {
+const Chatbot = ({ goal, onClose, mealPlan }) => {
   const [messages, setMessages] = useState([
     { text: `Hello! I'm your AI health assistant. How can I help you with your goal of ${goal.replace(/_/g, ' ')} today?`, isUser: false }
   ]);
@@ -123,7 +123,8 @@ const Chatbot = ({ goal, onClose }) => {
             body: JSON.stringify({
                 message: input,
                 goal: goal,
-                history: [] // You can optionally send chat history
+                history: [],
+                meal_plan: mealPlan  // You can optionally send chat history
             })
         });
 

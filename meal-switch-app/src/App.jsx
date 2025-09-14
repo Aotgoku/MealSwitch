@@ -792,9 +792,13 @@ const handleOptimizePlan = async () => {
             {showGoalModal && <GoalModal onGoalSelect={handleGoalSelection} />}
 
             {/* This shows the chatbot only when a goal is set AND it's meant to be visible */}
-            {userGoal && showChatbot && (
-                <Chatbot goal={userGoal} onClose={handleCloseChatbot} />
-            )}
+           {userGoal && showChatbot && (
+    <Chatbot 
+      goal={userGoal} 
+      onClose={handleCloseChatbot} 
+      mealPlan={optimizedPlanData || mealPlanData} // <-- ADD THIS PROP
+    />
+)}
 
             {/* This shows the floating button to RE-OPEN the chatbot */}
 

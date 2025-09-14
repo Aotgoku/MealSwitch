@@ -12,6 +12,7 @@ import os
 import google.generativeai as genai
 # Add this line with your other imports at the top of app.py
 from starlette.responses import JSONResponse
+import json # For parsing JSON responses
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -255,7 +256,8 @@ class ImageAnalysisRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     goal: str
-    history: Optional[List[Dict[str, str]]] = []   
+    history: Optional[List[Dict[str, str]]] = []
+    meal_plan: Optional[dict] = None # <-- ADD THIS LINE
 
     # Add this model with your others (like ChatRequest)
 class MealPlanRequest(BaseModel):
@@ -577,33 +579,48 @@ def quick_search(query: str):
 # ========================
 @app.post("/chat")
 def chat_with_gemini(request: ChatRequest):
-    """Chat with the AI Health Assistant"""
+    """Chat with the AI Health Assistant, with optional meal plan context."""
     logger.info(f"📡 /chat called with goal: {request.goal}")
 
     if not model:
         raise HTTPException(status_code=500, detail="Gemini model not configured. Check API key.")
 
     try:
-        # Create a more detailed prompt for the AI
+        # --- NEW CONTEXT-AWARE PROMPT ---
         prompt = f"""
-        You are 'MealSwitch', a friendly and knowledgeable AI health assistant.
+        You are 'MealSwitch', a friendly, expert AI health and nutrition assistant.
         The user's primary health goal is: "{request.goal.replace('_', ' ')}".
-        Based on this goal, answer the user's question concisely and helpfully.
+        """
+
+        # Conditionally add the meal plan to the prompt if the user has one
+        if request.meal_plan:
+            import json
+            # Convert the plan dictionary to a nicely formatted string
+            plan_str = json.dumps(request.meal_plan, indent=2)
+            prompt += f"""
+            The user is currently viewing the following personalized meal plan. Base your answer on this plan:
+            ---
+            {plan_str}
+            ---
+            """
+
+        prompt += f"""
+        Now, answer the user's question concisely, helpfully, and in the context of their goal and the provided meal plan (if any).
         Provide safe, general health and nutrition advice. Do not provide medical advice.
-        
+
         User's question: "{request.message}"
         """
+        # --- END OF PROMPT ---
 
         response = model.generate_content(prompt)
         
-        logger.info(f"✅ Gemini response generated successfully.")
+        logger.info(f"✅ Gemini context-aware response generated successfully.")
         return {"status": "ok", "reply": response.text}
 
     except Exception as e:
         logger.error(f"❌ Error in Gemini chat endpoint: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error communicating with AI model: {str(e)}")
-
 # ========================
 # NEW: Meal Plan Generator Endpoint
 # ========================
@@ -616,7 +633,7 @@ def generate_meal_plan(request: MealPlanRequest):
         raise HTTPException(status_code=500, detail="Gemini model not configured.")
 
     try:
-        # Prompt is unchanged
+        # The prompt is the same as before
         prompt = f"""
         Act as an elite sports nutritionist and expert chef. Your task is to generate a simple, healthy, and delicious daily meal plan based on the user's specific details.
         **User's Details:**
@@ -634,27 +651,35 @@ def generate_meal_plan(request: MealPlanRequest):
         2. For each meal, provide a "name" and a short, appealing "description" (1-2 sentences).
         3. Estimate the "calories" for each meal. The sum for all three meals MUST be very close to the target daily calories.
         4. Provide a concise "reason" (1-2 sentences) explaining why this specific plan is effective for the user's goal, considering their provided details.
-        **CRITICAL:** Your entire output must be ONLY a single, valid JSON object. Do not include any text, explanations, or markdown formatting (like ```json) before or after the JSON.
+        **CRITICAL:** Your entire output must be ONLY a single, valid JSON object.
+        Do not include any text, explanations, or markdown formatting (like ```json) before or after the JSON.
         The JSON object must follow this exact structure:
         {"plan": {"breakfast": {"name": "Meal Name", "description": "...", "calories": <number>}, "lunch": {...}, "dinner": {...}}, "totalCalories": <number>, "reason": "..."}
         """
 
         response = model.generate_content(prompt)
-        cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
         
         # --- THIS IS THE FIX ---
-        # We now parse the JSON string into a Python dictionary on the backend
-        import json
-        plan_data = json.loads(cleaned_response) 
+        # More robustly find and extract the JSON from the response text
+        # This looks for the first '{' and the last '}' to isolate the JSON block
+        text = response.text
+        start_index = text.find('{')
+        end_index = text.rfind('}') + 1
         
+        if start_index != -1 and end_index != 0:
+            json_str = text[start_index:end_index]
+            plan_data = json.loads(json_str)
+        else:
+            raise ValueError("No valid JSON object found in the AI response.")
+
         logger.info(f"✅ Gemini meal plan generated successfully.")
-        # We return the dictionary, which FastAPI automatically converts to a JSON object
         return {"status": "ok", "plan_data": plan_data}
 
     except Exception as e:
         logger.error(f"❌ Error in meal plan generation: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error generating meal plan: {str(e)}")
+
     # NEW ENDPOINT FOR THE OPTIMIZER FEATURE
 @app.post("/optimize-plan")
 def optimize_meal_plan(request: MealPlanOptimizeRequest):
