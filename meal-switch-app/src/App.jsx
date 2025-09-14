@@ -118,7 +118,7 @@ useEffect(() => {
         currentMount.appendChild(window.healthSceneInstance.renderer.domElement);
         window.healthSceneInstance.mount = currentMount;
         return () => {
-            if (window.healthSceneInstance?.renderer.domElement.parentNode === currentMount) {
+            if (window.healthSceneInstance && window.healthSceneInstance.renderer.domElement.parentNode === currentMount) {
                 currentMount.removeChild(window.healthSceneInstance.renderer.domElement);
             }
         };
@@ -127,10 +127,10 @@ useEffect(() => {
     // === SCENE SETUP ===
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x0f0f23, 50, 200);
-    
+
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 0, 20);
-    
+
     const renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: true,
@@ -294,7 +294,7 @@ useEffect(() => {
     // === FLOATING ENERGY ORBS ===
     const energyOrbs = [];
     const orbCount = 8;
-    
+
     // Health-themed colors that match the dark background
     const orbColors = [
         '#00f5ff', // Electric cyan
@@ -306,23 +306,23 @@ useEffect(() => {
         '#fb5607', // Orange red
         '#ff4081'  // Bright pink
     ];
-    
+
     for (let i = 0; i < orbCount; i++) {
         const orbGeometry = new THREE.SphereGeometry(1.5 + Math.random() * 1, 32, 32);
         const orbMaterial = createEnergyOrbMaterial(orbColors[i], 1.2 + Math.random() * 0.8);
         const orb = new THREE.Mesh(orbGeometry, orbMaterial);
-        
+
         // Position orbs in 3D space
         const angle = (i / orbCount) * Math.PI * 2;
         const radius = 8 + Math.random() * 6;
         const height = (Math.random() - 0.5) * 10;
-        
+
         orb.position.set(
             Math.cos(angle) * radius,
             height,
             Math.sin(angle) * radius + (Math.random() - 0.5) * 5
         );
-        
+
         orb.userData = {
             originalPosition: orb.position.clone(),
             floatSpeed: 0.5 + Math.random() * 1.0,
@@ -331,7 +331,7 @@ useEffect(() => {
             orbitRadius: 2 + Math.random() * 3,
             phaseOffset: Math.random() * Math.PI * 2
         };
-        
+
         energyOrbs.push(orb);
         scene.add(orb);
     }
@@ -365,17 +365,17 @@ useEffect(() => {
             transparent: true,
             blending: THREE.AdditiveBlending
         });
-        
+
         const points = [];
         for (let i = 0; i <= 20; i++) {
             const t = i / 20;
             const pos = new THREE.Vector3().lerpVectors(startOrb.position, endOrb.position, t);
             points.push(pos);
         }
-        
+
         const trailGeometry = new THREE.BufferGeometry().setFromPoints(points);
         const trail = new THREE.Line(trailGeometry, trailMaterial);
-        
+
         trail.userData = { startOrb, endOrb, material: trailMaterial };
         return trail;
     };
@@ -395,24 +395,24 @@ useEffect(() => {
         const particleCount = 200;
         const particles = new Float32Array(particleCount * 3);
         const colors = new Float32Array(particleCount * 3);
-        
+
         for (let i = 0; i < particleCount; i++) {
             const i3 = i * 3;
-            
+
             particles[i3] = (Math.random() - 0.5) * 50;
             particles[i3 + 1] = (Math.random() - 0.5) * 50;
             particles[i3 + 2] = (Math.random() - 0.5) * 30;
-            
+
             const color = new THREE.Color(orbColors[Math.floor(Math.random() * orbColors.length)]);
             colors[i3] = color.r;
             colors[i3 + 1] = color.g;
             colors[i3 + 2] = color.b;
         }
-        
+
         const particleGeometry = new THREE.BufferGeometry();
         particleGeometry.setAttribute('position', new THREE.BufferAttribute(particles, 3));
         particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        
+
         const particleMaterial = new THREE.PointsMaterial({
             size: 0.5,
             transparent: true,
@@ -420,7 +420,7 @@ useEffect(() => {
             vertexColors: true,
             blending: THREE.AdditiveBlending
         });
-        
+
         return new THREE.Points(particleGeometry, particleMaterial);
     };
 
@@ -442,41 +442,41 @@ useEffect(() => {
     // === ANIMATION LOOP ===
     const clock = new THREE.Clock();
     let animationId;
-    
+
     const animate = () => {
         const elapsedTime = clock.getElapsedTime();
-        
+
         // Update energy orbs
         energyOrbs.forEach((orb, index) => {
             const userData = orb.userData;
             const time = elapsedTime + userData.phaseOffset;
-            
+
             // Update material uniforms
             orb.material.uniforms.uTime.value = elapsedTime;
-            
+
             // Complex floating motion
-            orb.position.x = userData.originalPosition.x + 
+            orb.position.x = userData.originalPosition.x +
                 Math.cos(time * userData.orbitSpeed) * userData.orbitRadius +
                 Math.sin(time * userData.floatSpeed) * 1;
-                
-            orb.position.y = userData.originalPosition.y + 
+
+            orb.position.y = userData.originalPosition.y +
                 Math.sin(time * userData.floatSpeed) * 3 +
                 Math.cos(time * userData.orbitSpeed * 0.7) * 2;
-                
-            orb.position.z = userData.originalPosition.z + 
+
+            orb.position.z = userData.originalPosition.z +
                 Math.sin(time * userData.orbitSpeed) * userData.orbitRadius * 0.5 +
                 Math.cos(time * userData.floatSpeed * 0.8) * 1.5;
-            
+
             // Rotation
             orb.rotation.x += userData.rotateSpeed * 0.01;
             orb.rotation.y += userData.rotateSpeed * 0.015;
         });
-        
+
         // Update energy trails
         energyTrails.forEach(trail => {
             const { startOrb, endOrb, material } = trail.userData;
             material.uniforms.uTime.value = elapsedTime;
-            
+
             // Update trail geometry
             const points = [];
             for (let i = 0; i <= 20; i++) {
@@ -488,19 +488,19 @@ useEffect(() => {
             }
             trail.geometry.setFromPoints(points);
         });
-        
+
         // Rotate ambient particles
         ambientParticles.rotation.y += 0.001;
-        
+
         // Camera gentle movement
         camera.position.x = Math.sin(elapsedTime * 0.1) * 2;
         camera.position.y = Math.cos(elapsedTime * 0.08) * 1.5;
         camera.lookAt(new THREE.Vector3(0, 0, 0));
-        
+
         renderer.render(scene, camera);
         animationId = requestAnimationFrame(animate);
     };
-    
+
     animate();
 
     // === RESIZE HANDLER ===
@@ -510,7 +510,7 @@ useEffect(() => {
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     };
-    
+
     window.addEventListener('resize', handleResize);
 
     // === STORE INSTANCE GLOBALLY FOR PERSISTENCE ===
@@ -524,7 +524,7 @@ useEffect(() => {
         cleanup: () => {
             if (animationId) cancelAnimationFrame(animationId);
             window.removeEventListener('resize', handleResize);
-            
+
             scene.traverse((object) => {
                 if (object.geometry) object.geometry.dispose();
                 if (object.material) {
@@ -535,7 +535,7 @@ useEffect(() => {
                     }
                 }
             });
-            
+
             if (renderer.domElement.parentNode) {
                 renderer.domElement.parentNode.removeChild(renderer.domElement);
             }
@@ -546,11 +546,11 @@ useEffect(() => {
 
     // === CLEANUP FUNCTION ===
     return () => {
-        if (window.healthSceneInstance?.renderer.domElement.parentNode === currentMount) {
+        if (window.healthSceneInstance && window.healthSceneInstance.renderer.domElement.parentNode === currentMount) {
             currentMount.removeChild(window.healthSceneInstance.renderer.domElement);
         }
     };
-}, []);
+}, [showResults]); // This is the only line that needs to be changed
 
     // API call function
     const callNutritionAPI = async (foodQuery) => {
