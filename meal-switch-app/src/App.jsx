@@ -1,6 +1,35 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
-import { Camera, Upload, Zap, Target, TrendingUp, Sparkles, ChefHat, Activity, Star, Users, Clock, Brain, Shield, Award, ArrowRight, Play, BarChart3, Utensils, Heart, Flame, Droplets, Wheat, X, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+// Add Bot to the list of imported icons
+import { Camera, Upload, Zap, Target, TrendingUp, Sparkles, ChefHat, Activity, Star, Users, Clock, Brain, Shield, Award, ArrowRight, Play, BarChart3, Utensils, Heart, Flame, Droplets, Wheat, X, CheckCircle, AlertCircle, ArrowLeft, Bot } from 'lucide-react';
+import GoalModal from './GoalModal'; // Import the new modal
+import Chatbot from './Chatbot'; // Import the new chatbot
+import styled from 'styled-components';
+import MealPlan from './MealPlan';
+import MealPlanForm from './MealPlanForm';
+
+const OpenChatbotButton = styled.button`
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(to right, #f97316, #ec4899);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  z-index: 999;
+  transition: transform 0.2s ease;
+
+  &:hover {
+    transform: scale(1.1);
+  }
+`;
 
 const App = () => {
     const [foodInput, setFoodInput] = useState('');
@@ -12,6 +41,22 @@ const App = () => {
     const [showResults, setShowResults] = useState(false);
     const [analysisResult, setAnalysisResult] = useState(null);
     const [error, setError] = useState(null);
+    const [userGoal, setUserGoal] = useState(null);
+    const [showGoalModal, setShowGoalModal] = useState(true);
+    const [showChatbot, setShowChatbot] = useState(false);
+    const [showMealPlan, setShowMealPlan] = useState(false);
+    const [mealPlanData, setMealPlanData] = useState(null);
+    const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+   const [showMealPlanForm, setShowMealPlanForm] = useState(false);
+  const [mealPlanDetails, setMealPlanDetails] = useState({
+    age: '',
+    weight: '',
+    height: '',
+    gender: 'male',
+    targetCalories: 2000,
+  });
+  const [optimizedPlanData, setOptimizedPlanData] = useState(null);
+
 
     const mountRef = useRef(null);
     const heroRef = useRef(null);
@@ -19,6 +64,24 @@ const App = () => {
     const demoRef = useRef(null);
     const statsRef = useRef(null);
     const ctaRef = useRef(null);
+
+    const handleGoalSelection = (goal) => {
+        if (goal) {
+            setUserGoal(goal);
+            setShowGoalModal(false);
+            setShowChatbot(true); // ADD THIS LINE
+        }
+    };
+
+    const handleCloseChatbot = () => {
+        setShowChatbot(false);
+    };
+
+    const handleOpenChatbot = () => {
+        setShowChatbot(true);
+    };
+
+
 
     // Intersection Observer for smooth scroll animations
     useEffect(() => {
@@ -242,6 +305,68 @@ const App = () => {
             reader.readAsDataURL(file);
         }
     }, []);
+
+
+    const handleGeneratePlan = async () => {
+    if (!userGoal) {
+        alert("Please select a goal first!");
+        return;
+    }
+    setIsGeneratingPlan(true);
+    setShowMealPlanForm(false); // Close the form while generating
+
+    try {
+        const response = await fetch('http://127.0.0.1:8000/generate-meal-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                goal: userGoal,
+                calories: parseInt(mealPlanDetails.targetCalories, 10),
+                age: mealPlanDetails.age ? parseInt(mealPlanDetails.age, 10) : null,
+                weight_kg: mealPlanDetails.weight ? parseFloat(mealPlanDetails.weight) : null,
+                height_cm: mealPlanDetails.height ? parseFloat(mealPlanDetails.height) : null,
+                gender: mealPlanDetails.gender
+            })
+        });
+        const data = await response.json();
+        if (data.status === 'ok') {
+           setMealPlanData(data.plan_data);
+            setShowMealPlan(true);
+        } else {
+            throw new Error(data.error || "Failed to generate plan.");
+        }
+    } catch (error) {
+        console.error("Error generating meal plan:", error);
+        alert("Sorry, there was an error generating your meal plan.");
+    } finally {
+        setIsGeneratingPlan(false);
+    }
+};
+
+const handleOptimizePlan = async () => {
+    if (!mealPlanData) return;
+    setIsGeneratingPlan(true); // We can reuse the same loading state
+
+    try {
+        const response = await fetch('http://127.0.0.1:8000/optimize-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan: mealPlanData }) // Send the current plan to the backend
+        });
+        const data = await response.json();
+        if (data.status === 'ok') {
+            // Store the new, optimized plan in our new state variable
+            setOptimizedPlanData(data.optimized_plan);
+        } else {
+            throw new Error("Failed to optimize plan.");
+        }
+    } catch (error) {
+        console.error("Error optimizing plan:", error);
+        alert("Sorry, there was an error optimizing your plan.");
+    } finally {
+        setIsGeneratingPlan(false);
+    }
+};
 
     // Function to handle smooth scrolling
     const handleNavClick = (sectionId) => {
@@ -649,16 +774,57 @@ const App = () => {
 
     return (
         <div className="app-container">
+             {showMealPlanForm && <MealPlanForm onGenerate={handleGeneratePlan} onClose={() => setShowMealPlanForm(false)} isGenerating={isGeneratingPlan} details={mealPlanDetails} setDetails={setMealPlanDetails} />}
+           {showMealPlan && (
+    <MealPlan 
+        planData={mealPlanData} 
+        optimizedPlanData={optimizedPlanData}
+        onClose={() => {
+            setShowMealPlan(false);
+            setOptimizedPlanData(null); // IMPORTANT: Reset the optimized plan when the modal is closed
+        }} 
+        onOptimize={handleOptimizePlan}
+        isOptimizing={isGeneratingPlan} // Pass the loading state
+    />
+)}
+            {/* ADD THESE TWO LINES */}
+            {/* This shows the goal modal at the start */}
+            {showGoalModal && <GoalModal onGoalSelect={handleGoalSelection} />}
+
+            {/* This shows the chatbot only when a goal is set AND it's meant to be visible */}
+            {userGoal && showChatbot && (
+                <Chatbot goal={userGoal} onClose={handleCloseChatbot} />
+            )}
+
+            {/* This shows the floating button to RE-OPEN the chatbot */}
+
+            {userGoal && !showChatbot && (
+                <OpenChatbotButton
+                    onClick={handleOpenChatbot}
+                    className="tooltip-host"
+                    data-tooltip="AI Health Assistant"
+                >
+                    <Bot />
+                </OpenChatbotButton>
+            )}
+
             <div ref={mountRef} className="threejs-canvas"></div>
 
             {error && <ErrorDisplay />}
 
             <div className="floating-action-menu">
                 {[
-                    { id: 'hero', icon: ChefHat }, { id: 'features', icon: Sparkles },
-                    { id: 'demo', icon: BarChart3 }, { id: 'stats', icon: Users }
-                ].map(({ id, icon: Icon }) => (
-                    <button key={id} onClick={() => handleNavClick(id)} className={`floating-menu-button ${currentSection === id ? 'active' : ''}`}>
+                    { id: 'hero', icon: ChefHat, label: 'Go to Top' },
+                    { id: 'features', icon: Sparkles, label: 'View Features' },
+                    { id: 'demo', icon: BarChart3, label: 'See Demo' },
+                    { id: 'stats', icon: Users, label: 'Read Reviews' }
+                ].map(({ id, icon: Icon, label }) => (
+                    <button
+                        key={id}
+                        onClick={() => handleNavClick(id)}
+                        className={`floating-menu-button tooltip-host ${currentSection === id ? 'active' : ''}`}
+                        data-tooltip={label}
+                    >
                         <Icon />
                     </button>
                 ))}
@@ -677,11 +843,19 @@ const App = () => {
                     </div>
                     <div className="nav-links">
                         {[
-                            { name: 'Features', id: 'features' },
-                            { name: 'Reviews', id: 'stats' },
-                            { name: 'About', id: 'About' }
+                            { name: 'Features', id: 'features', tooltip: 'Learn about our features' },
+                            { name: 'Reviews', id: 'stats', tooltip: 'See what users are saying' },
+                            { name: 'About', id: 'About', tooltip: 'Learn more about MealSwitch' }
                         ].map((item) => (
-                            <a key={item.name} href={`#${item.id}`} onClick={(e) => { e.preventDefault(); handleNavClick(item.id); }} className="nav-link">{item.name}</a>
+                            <a
+                                key={item.name}
+                                href={`#${item.id}`}
+                                onClick={(e) => { e.preventDefault(); handleNavClick(item.id); }}
+                                className="nav-link tooltip-host"
+                                data-tooltip={item.tooltip}
+                            >
+                                {item.name}
+                            </a>
                         ))}
                     </div>
                     <button className="nav-button">Get Started</button>
@@ -758,6 +932,14 @@ const App = () => {
                             </button>
                         </div>
                     </div>
+
+                  {/* This is the new button that opens the pop-up form */}
+<div style={{ marginTop: '2rem' }}>
+    <button onClick={() => setShowMealPlanForm(true)} className="cta-button-primary">
+        <Zap />
+        <span>Generate Personalized AI Meal Plan</span>
+    </button>
+</div>
                 </section>
 
                 <section id="features" ref={featuresRef} className="features-section">
@@ -878,6 +1060,8 @@ const App = () => {
                     width:98.5vw;
                      overflow: hidden; 
                 }
+
+               
 
                 .threejs-canvas {
                     position: fixed;
@@ -1853,6 +2037,18 @@ const App = () => {
                     .section-subtitle {
                         font-size: 1rem;
                     }
+             // Inside the final <style jsx> block in App.jsx
+
+/* ... all of your other existing CSS for the main page ... */
+
+
+.open-chatbot-button:hover {
+    transform: scale(1.1);
+}
+
+
+
+
                 }
             `}</style>
         </div>

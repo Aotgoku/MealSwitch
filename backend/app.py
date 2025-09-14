@@ -7,10 +7,33 @@ from sklearn.metrics.pairwise import cosine_similarity
 from typing import Optional, List, Dict, Any
 import logging
 import traceback
+# Add these lines with your other imports
+import os
+import google.generativeai as genai
+# Add this line with your other imports at the top of app.py
+from starlette.responses import JSONResponse
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Set your Google API key
+# Paste this block after your logging configuration
+
+# ========================
+# NEW: Configure Gemini API
+# ========================
+# IMPORTANT: Replace "YOUR_API_KEY" with the key you copied
+# For better security, use environment variables in a real project
+try:
+    # Make sure to replace 'YOUR_API_KEY' with your actual key
+    GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', 'AIzaSyBVASGrFU3ogOI5nL7jeO0zM8dsIYqtgJ4') 
+    genai.configure(api_key=GOOGLE_API_KEY)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    logger.info("✅ Gemini API configured successfully!")
+except Exception as e:
+    logger.error(f"❌ Error configuring Gemini API: {e}")
+    model = None
 
 # ========================
 # Load your dataset
@@ -153,6 +176,44 @@ def get_alternative_suggestions(food_name):
     except Exception as e:
         logger.error(f"Error getting alternatives: {e}")
         return []
+    
+    # This new function uses your ML model to find smart suggestions
+def find_optimized_suggestion(food_name: str):
+    """
+    Uses the TF-IDF model to find the most similar food in the local dataset
+    and returns its healthier substitute if a good match is found.
+    """
+    # First, ensure the model and dataframe are ready to be used
+    if vectorizer is None or X is None or df.empty:
+        return None
+
+    try:
+        # Use the TF-IDF model to find the most similar food in your dataset
+        query_vec = vectorizer.transform([food_name])
+        sim_scores = cosine_similarity(query_vec, X).flatten()
+        best_match_idx = sim_scores.argmax()
+        best_score = sim_scores[best_match_idx]
+
+        # We set a confidence threshold. Only suggest a swap if the match is strong.
+        if best_score > 0.7:
+            matched_food = df.iloc[best_match_idx]
+            substitute = matched_food.get('healthy_substitute')
+            calories_saved = matched_food.get('calories_saved', 0)
+
+            # Check if a valid substitute exists that actually saves calories
+            if pd.notna(substitute) and substitute.strip() != '—' and calories_saved > 0:
+                logger.info(f"Found optimization: {food_name} -> {substitute}")
+                return {
+                    "original": matched_food['food_name'], # The food it matched in your CSV
+                    "suggestion": substitute, # The healthy substitute from your CSV
+                    "calories_saved": int(calories_saved)
+                }
+    except Exception as e:
+        logger.error(f"Error finding optimized suggestion for '{food_name}': {e}")
+        return None
+    
+    # If no strong match or no valid substitute is found, return nothing
+    return None
 
 # ========================
 # FastAPI setup
@@ -189,6 +250,27 @@ class ImageAnalysisRequest(BaseModel):
     image_data: str  # Base64 encoded image
     portion_size: Optional[float] = 1.0
 
+# Add this new Pydantic model with your others
+
+class ChatRequest(BaseModel):
+    message: str
+    goal: str
+    history: Optional[List[Dict[str, str]]] = []   
+
+    # Add this model with your others (like ChatRequest)
+class MealPlanRequest(BaseModel):
+    goal: str
+    calories: int
+    cuisine: Optional[str] = "Indian"
+    age: Optional[int] = None
+    weight_kg: Optional[float] = None
+    height_cm: Optional[float] = None
+    gender: Optional[str] = None
+
+class MealPlanOptimizeRequest(BaseModel):
+     plan: dict # It expects to receive the JSON plan from the frontend
+
+    
 # ========================
 # Response Models
 # ========================
@@ -215,6 +297,7 @@ class APIResponse(BaseModel):
     message: Optional[str] = None
     result: Optional[Any] = None
     error: Optional[str] = None
+
 
 # ========================
 # API Endpoints
@@ -489,6 +572,111 @@ def quick_search(query: str):
     except Exception as e:
         logger.error(f"❌ Error in quick search: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+# NEW: Chatbot Endpoint
+# ========================
+@app.post("/chat")
+def chat_with_gemini(request: ChatRequest):
+    """Chat with the AI Health Assistant"""
+    logger.info(f"📡 /chat called with goal: {request.goal}")
+
+    if not model:
+        raise HTTPException(status_code=500, detail="Gemini model not configured. Check API key.")
+
+    try:
+        # Create a more detailed prompt for the AI
+        prompt = f"""
+        You are 'MealSwitch', a friendly and knowledgeable AI health assistant.
+        The user's primary health goal is: "{request.goal.replace('_', ' ')}".
+        Based on this goal, answer the user's question concisely and helpfully.
+        Provide safe, general health and nutrition advice. Do not provide medical advice.
+        
+        User's question: "{request.message}"
+        """
+
+        response = model.generate_content(prompt)
+        
+        logger.info(f"✅ Gemini response generated successfully.")
+        return {"status": "ok", "reply": response.text}
+
+    except Exception as e:
+        logger.error(f"❌ Error in Gemini chat endpoint: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Error communicating with AI model: {str(e)}")
+
+# ========================
+# NEW: Meal Plan Generator Endpoint
+# ========================
+@app.post("/generate-meal-plan")
+def generate_meal_plan(request: MealPlanRequest):
+    """Generates a daily meal plan using the Gemini API"""
+    logger.info(f"📡 /generate-meal-plan called with goal: {request.goal}, calories: {request.calories}")
+
+    if not model:
+        raise HTTPException(status_code=500, detail="Gemini model not configured.")
+
+    try:
+        # Prompt is unchanged
+        prompt = f"""
+        Act as an elite sports nutritionist and expert chef. Your task is to generate a simple, healthy, and delicious daily meal plan based on the user's specific details.
+        **User's Details:**
+        - **Primary Goal:** {request.goal.replace('_', ' ')}
+        - **Target Daily Calories:** Approximately {request.calories}
+        - **Preferred Cuisine:** {request.cuisine}
+        """
+        if request.age: prompt += f"- **Age:** {request.age}\n"
+        if request.weight_kg: prompt += f"- **Weight:** {request.weight_kg} kg\n"
+        if request.height_cm: prompt += f"- **Height:** {request.height_cm} cm\n"
+        if request.gender: prompt += f"- **Gender:** {request.gender}\n"
+        prompt += """
+        **Instructions:**
+        1. Create a meal plan with three meals: Breakfast, Lunch, and Dinner.
+        2. For each meal, provide a "name" and a short, appealing "description" (1-2 sentences).
+        3. Estimate the "calories" for each meal. The sum for all three meals MUST be very close to the target daily calories.
+        4. Provide a concise "reason" (1-2 sentences) explaining why this specific plan is effective for the user's goal, considering their provided details.
+        **CRITICAL:** Your entire output must be ONLY a single, valid JSON object. Do not include any text, explanations, or markdown formatting (like ```json) before or after the JSON.
+        The JSON object must follow this exact structure:
+        {"plan": {"breakfast": {"name": "Meal Name", "description": "...", "calories": <number>}, "lunch": {...}, "dinner": {...}}, "totalCalories": <number>, "reason": "..."}
+        """
+
+        response = model.generate_content(prompt)
+        cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
+        
+        # --- THIS IS THE FIX ---
+        # We now parse the JSON string into a Python dictionary on the backend
+        import json
+        plan_data = json.loads(cleaned_response) 
+        
+        logger.info(f"✅ Gemini meal plan generated successfully.")
+        # We return the dictionary, which FastAPI automatically converts to a JSON object
+        return {"status": "ok", "plan_data": plan_data}
+
+    except Exception as e:
+        logger.error(f"❌ Error in meal plan generation: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Error generating meal plan: {str(e)}")
+    # NEW ENDPOINT FOR THE OPTIMIZER FEATURE
+@app.post("/optimize-plan")
+def optimize_meal_plan(request: MealPlanOptimizeRequest):
+    """Receives a meal plan and adds MealSwitch optimization suggestions."""
+    logger.info("📡 /optimize-plan called")
+    optimized_plan = request.plan.copy() # Make a copy to avoid changing the original
+
+    # Loop through each meal in the plan
+    for meal_type in ["breakfast", "lunch", "dinner"]:
+        if meal_type in optimized_plan.get("plan", {}):
+            meal_name = optimized_plan["plan"][meal_type].get("name")
+            if meal_name:
+                # Call our smart suggestion function for each meal name
+                suggestion = find_optimized_suggestion(meal_name)
+                if suggestion:
+                    # If a suggestion is found, add it to the meal object
+                    optimized_plan["plan"][meal_type]["suggestion"] = suggestion
+    
+    # Send the newly enriched plan back to the frontend
+    return {"status": "ok", "optimized_plan": optimized_plan}
+# ====================================================================
+# END OF THE CODE BLOCK TO PASTE
 
 # ========================
 # Error Handlers
@@ -496,22 +684,28 @@ def quick_search(query: str):
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     logger.error(f"HTTP Exception: {exc.status_code} - {exc.detail}")
-    return {
-        "status": "error",
-        "error": exc.detail,
-        "status_code": exc.status_code
-    }
-
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "status": "error",
+            "error": exc.detail
+        }
+    )
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc):
     logger.error(f"Unexpected error: {exc}")
     logger.error(traceback.format_exc())
-    return {
-        "status": "error",
-        "error": "An unexpected error occurred",
-        "message": "Please try again or contact support"
-    }
+    return JSONResponse(
+        status_code=500,
+        content={
+            "status": "error",
+            "error": "An unexpected internal error occurred",
+            "message": "Please try again or contact support"
+        }
+    )
+# Paste this entire block at the end of your file, before the "if __name__" line
 
+# 
 # ========================
 # Startup Event
 # ========================

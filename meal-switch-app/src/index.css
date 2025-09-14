@@ -66,3 +66,51 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* --- Custom Tooltip Styles --- */
+.tooltip-host {
+  position: relative; 
+}
+
+.tooltip-host::before {
+  content: attr(data-tooltip); 
+  position: absolute;
+  bottom: calc(100% + 8px); 
+  left: 50%;
+  transform: translateX(-50%);
+
+  background-color: #1c1917; 
+  color: #f2f2f2;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap; 
+
+  opacity: 0; 
+  pointer-events: none; 
+  transition: opacity 0.2s ease-in-out;
+  z-index: 1001; 
+}
+
+.tooltip-host::after {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 3px); 
+  left: 50%;
+  transform: translateX(-50%);
+
+  border: 5px solid transparent;
+  border-top-color: #1c1917; 
+
+  opacity: 0; 
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+  z-index: 1001;
+}
+
+.tooltip-host:hover::before,
+.tooltip-host:hover::after {
+  opacity: 1;
+}
