@@ -106,112 +106,452 @@ const App = () => {
     }, []);
 
     // Creative and Themed 3D Background Scene
-    useEffect(() => {
-        if (!mountRef.current) return;
-        const currentMount = mountRef.current;
+   // Paste this entire useEffect hook into your App.jsx file
+// in place of the old three.js useEffect.
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+useEffect(() => {
+    if (!mountRef.current) return;
+    const currentMount = mountRef.current;
 
-        renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
-        renderer.setClearColor(0x000000, 0);
-        currentMount.appendChild(renderer.domElement);
-
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-        scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-        directionalLight.position.set(5, 10, 7.5);
-        scene.add(directionalLight);
-
-        const createParticle = (geometry, material) => {
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.position.set((Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15);
-            mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-            mesh.userData = {
-                rotationX: (Math.random() - 0.5) * 0.005,
-                rotationY: (Math.random() - 0.5) * 0.005,
-            };
-            return mesh;
-        };
-
-        const particles = new THREE.Group();
-        const materials = {
-            red: new THREE.MeshStandardMaterial({ color: 0xcf3c32, roughness: 0.6 }),
-            white: new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.6 }),
-            brown: new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.6 }),
-            yellow: new THREE.MeshStandardMaterial({ color: 0xffd54f, roughness: 0.6 }),
-        };
-
-        const appleShape = new THREE.Shape();
-        appleShape.moveTo(0, 0);
-        appleShape.absarc(0, 0, 0.2, 0, Math.PI * 2, false);
-        const holeShape = new THREE.Path();
-        holeShape.moveTo(0, 0);
-        holeShape.absarc(0, 0, 0.15, 0, Math.PI * 2, true);
-        appleShape.holes.push(holeShape);
-        const extrudeSettings = { depth: 0.05, bevelEnabled: true, bevelSegments: 2, steps: 2, bevelSize: 0.01, bevelThickness: 0.01 };
-        const appleGeometry = new THREE.ExtrudeGeometry(appleShape, extrudeSettings);
-
-        const mushroomCap = new THREE.SphereGeometry(0.15, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.5);
-        const mushroomStem = new THREE.CylinderGeometry(0.05, 0.07, 0.2, 16);
-        mushroomStem.translate(0, -0.1, 0);
-
-        const cheeseShape = new THREE.Shape();
-        cheeseShape.moveTo(0, 0);
-        cheeseShape.lineTo(0.3, 0);
-        cheeseShape.lineTo(0, 0.3);
-        cheeseShape.lineTo(0, 0);
-        const cheeseGeometry = new THREE.ExtrudeGeometry(cheeseShape, { depth: 0.2, bevelEnabled: false });
-
-        for (let i = 0; i < 20; i++) particles.add(createParticle(appleGeometry, materials.red));
-        for (let i = 0; i < 15; i++) {
-            const mushroom = new THREE.Group();
-            const cap = new THREE.Mesh(mushroomCap, materials.brown);
-            const stem = new THREE.Mesh(mushroomStem, materials.white);
-            mushroom.add(cap);
-            mushroom.add(stem);
-            mushroom.position.set((Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15);
-            mushroom.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-            mushroom.userData = { rotationX: (Math.random() - 0.5) * 0.005, rotationY: (Math.random() - 0.5) * 0.005 };
-            particles.add(mushroom);
-        }
-        for (let i = 0; i < 15; i++) particles.add(createParticle(cheeseGeometry, materials.yellow));
-
-        scene.add(particles);
-
-        camera.position.z = 5;
-
-        const clock = new THREE.Clock();
-        const animate = () => {
-            requestAnimationFrame(animate);
-            const elapsedTime = clock.getElapsedTime();
-
-            particles.children.forEach((particle, index) => {
-                particle.rotation.x += particle.userData.rotationX;
-                particle.rotation.y += particle.userData.rotationY;
-                particle.position.y += Math.sin(elapsedTime * 0.3 + index) * 0.001;
-            });
-
-            particles.rotation.y += 0.0005;
-            renderer.render(scene, camera);
-        };
-        animate();
-
-        const handleResize = () => {
-            camera.aspect = currentMount.clientWidth / currentMount.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
-        };
-        window.addEventListener('resize', handleResize);
-
+    // Check if scene already exists to prevent re-rendering
+    if (window.healthSceneInstance) {
+        currentMount.appendChild(window.healthSceneInstance.renderer.domElement);
+        window.healthSceneInstance.mount = currentMount;
         return () => {
-            window.removeEventListener('resize', handleResize);
-            if (currentMount) {
-                currentMount.removeChild(renderer.domElement);
+            if (window.healthSceneInstance?.renderer.domElement.parentNode === currentMount) {
+                currentMount.removeChild(window.healthSceneInstance.renderer.domElement);
             }
         };
-    }, []);
+    }
+
+    // === FUTURISTIC SCENE SETUP ===
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x6366f1, 30, 200); // Purple fog to match background
+    
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 30);
+    
+    const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance"
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    currentMount.appendChild(renderer.domElement);
+
+    // === HOLOGRAPHIC MATERIAL ===
+    const createHolographicMaterial = (color1, color2, speed = 1.0) => {
+        return new THREE.ShaderMaterial({
+            uniforms: {
+                uTime: { value: 0 },
+                uColor1: { value: new THREE.Color(color1) },
+                uColor2: { value: new THREE.Color(color2) },
+                uSpeed: { value: speed },
+                uFresnelPower: { value: 2.0 },
+                uScanlineFreq: { value: 20.0 },
+                uGlitchIntensity: { value: 0.1 },
+                uHologramStrength: { value: 0.8 }
+            },
+            vertexShader: `
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+                varying vec2 vUv;
+                varying vec3 vWorldPosition;
+                uniform float uTime;
+                uniform float uGlitchIntensity;
+                
+                // Noise function for glitch effect
+                float random(vec2 st) {
+                    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+                }
+                
+                void main() {
+                    vUv = uv;
+                    vNormal = normalize(normalMatrix * normal);
+                    
+                    vec3 pos = position;
+                    
+                    // Holographic glitch effect
+                    float glitch = random(vec2(uTime * 10.0, position.y * 100.0)) * uGlitchIntensity;
+                    pos.x += sin(uTime * 5.0 + position.y * 10.0) * glitch;
+                    pos.z += cos(uTime * 3.0 + position.x * 8.0) * glitch * 0.5;
+                    
+                    // Gentle wave distortion
+                    pos += normal * sin(uTime * 2.0 + position.y * 5.0) * 0.1;
+                    
+                    vWorldPosition = (modelMatrix * vec4(pos, 1.0)).xyz;
+                    vPosition = pos;
+                    
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float uTime;
+                uniform vec3 uColor1;
+                uniform vec3 uColor2;
+                uniform float uSpeed;
+                uniform float uFresnelPower;
+                uniform float uScanlineFreq;
+                uniform float uHologramStrength;
+                
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+                varying vec2 vUv;
+                varying vec3 vWorldPosition;
+                
+                void main() {
+                    vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
+                    vec3 normal = normalize(vNormal);
+                    
+                    // Fresnel effect for holographic rim
+                    float fresnel = 1.0 - max(dot(viewDirection, normal), 0.0);
+                    fresnel = pow(fresnel, uFresnelPower);
+                    
+                    // Animated scanlines
+                    float scanlines = sin((vPosition.y + uTime * uSpeed * 5.0) * uScanlineFreq) * 0.5 + 0.5;
+                    scanlines = pow(scanlines, 3.0);
+                    
+                    // Horizontal data streams
+                    float streams = sin((vPosition.x + uTime * uSpeed * 2.0) * 15.0) * 0.3 + 0.7;
+                    
+                    // Color mixing with holographic effect
+                    vec3 hologramColor = mix(uColor1, uColor2, fresnel);
+                    hologramColor = mix(hologramColor, uColor2 * 1.5, scanlines);
+                    hologramColor += uColor1 * streams * 0.3;
+                    
+                    // Pulsing intensity
+                    float pulse = sin(uTime * 3.0) * 0.2 + 0.8;
+                    hologramColor *= pulse;
+                    
+                    // Edge glow
+                    float edgeGlow = pow(fresnel, 0.5) * uHologramStrength;
+                    hologramColor += uColor2 * edgeGlow * 2.0;
+                    
+                    // Alpha based on fresnel and scanlines
+                    float alpha = (fresnel * 0.8 + scanlines * 0.4) * uHologramStrength;
+                    alpha = clamp(alpha, 0.1, 0.9);
+                    
+                    gl_FragColor = vec4(hologramColor, alpha);
+                }
+            `,
+            transparent: true,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+    };
+
+    // === FUTURISTIC HEALTH OBJECTS ===
+    const healthObjects = [];
+    
+    // DNA Helix
+    const createDNAHelix = () => {
+        const group = new THREE.Group();
+        const helixMaterial = createHolographicMaterial(0x8b5cf6, 0x06b6d4, 1.2); // Purple to cyan
+        
+        for (let i = 0; i < 40; i++) {
+            const sphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.2, 8, 8),
+                helixMaterial
+            );
+            
+            const angle = (i / 40) * Math.PI * 4;
+            const y = i * 0.5 - 10;
+            sphere.position.set(
+                Math.cos(angle) * 2,
+                y,
+                Math.sin(angle) * 2
+            );
+            
+            const sphere2 = sphere.clone();
+            sphere2.position.set(
+                Math.cos(angle + Math.PI) * 2,
+                y,
+                Math.sin(angle + Math.PI) * 2
+            );
+            
+            group.add(sphere, sphere2);
+            
+            // Connecting lines
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                sphere.position,
+                sphere2.position
+            ]);
+            const line = new THREE.Line(lineGeometry, helixMaterial);
+            group.add(line);
+        }
+        
+        group.position.set(-15, 0, -10);
+        group.rotation.z = Math.PI / 6;
+        return group;
+    };
+
+    // Medical Cross
+    const createMedicalCross = () => {
+        const group = new THREE.Group();
+        const crossMaterial = createHolographicMaterial(0x06d6a0, 0x10b981, 0.8); // Emerald green
+        
+        // Vertical bar
+        const vertical = new THREE.Mesh(
+            new THREE.BoxGeometry(1.5, 8, 0.5),
+            crossMaterial
+        );
+        
+        // Horizontal bar  
+        const horizontal = new THREE.Mesh(
+            new THREE.BoxGeometry(8, 1.5, 0.5),
+            crossMaterial
+        );
+        
+        group.add(vertical, horizontal);
+        group.position.set(15, 5, -5);
+        return group;
+    };
+
+    // Molecular Structure
+    const createMolecule = () => {
+        const group = new THREE.Group();
+        const moleculeMaterial = createHolographicMaterial(0xf59e0b, 0xeab308, 1.5); // Golden yellow
+        
+        // Central atom
+        const center = new THREE.Mesh(
+            new THREE.SphereGeometry(1, 16, 16),
+            moleculeMaterial
+        );
+        group.add(center);
+        
+        // Orbiting electrons
+        for (let i = 0; i < 6; i++) {
+            const electron = new THREE.Mesh(
+                new THREE.SphereGeometry(0.3, 8, 8),
+                moleculeMaterial
+            );
+            
+            const angle = (i / 6) * Math.PI * 2;
+            const radius = 3 + Math.sin(i) * 1;
+            electron.position.set(
+                Math.cos(angle) * radius,
+                Math.sin(angle * 2) * 2,
+                Math.sin(angle) * radius
+            );
+            
+            group.add(electron);
+            
+            // Electron path
+            const orbitGeometry = new THREE.RingGeometry(radius - 0.1, radius + 0.1, 32);
+            const orbit = new THREE.Mesh(orbitGeometry, moleculeMaterial);
+            orbit.rotation.x = Math.PI / 2;
+            orbit.rotation.z = angle;
+            group.add(orbit);
+        }
+        
+        group.position.set(0, -10, 0);
+        return group;
+    };
+
+    // Heart Rate Monitor
+    const createHeartRate = () => {
+        const group = new THREE.Group();
+        const heartMaterial = createHolographicMaterial(0xef4444, 0xf87171, 2.0); // Red
+        
+        const points = [];
+        for (let i = 0; i < 100; i++) {
+            const x = (i - 50) * 0.3;
+            let y = 0;
+            
+            // Create heartbeat pattern
+            if (i > 45 && i < 55) {
+                y = Math.sin((i - 45) / 10 * Math.PI) * 3;
+            } else if (i > 35 && i < 45) {
+                y = Math.sin((i - 35) / 10 * Math.PI) * 1.5;
+            }
+            
+            points.push(new THREE.Vector3(x, y, 0));
+        }
+        
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+        const heartLine = new THREE.Line(lineGeometry, heartMaterial);
+        group.add(heartLine);
+        
+        group.position.set(-8, 12, 5);
+        return group;
+    };
+
+    // Vitamin Pills
+    const createVitamins = () => {
+        const group = new THREE.Group();
+        const vitaminMaterial = createHolographicMaterial(0xa855f7, 0xc084fc, 1.0); // Purple
+        
+        for (let i = 0; i < 8; i++) {
+            const pill = new THREE.Mesh(
+                new THREE.CapsuleGeometry(0.5, 1.5, 4, 8),
+                vitaminMaterial
+            );
+            
+            const angle = (i / 8) * Math.PI * 2;
+            pill.position.set(
+                Math.cos(angle) * 4,
+                Math.sin(angle * 1.5) * 2,
+                Math.sin(angle) * 2
+            );
+            pill.rotation.set(angle, angle * 0.5, 0);
+            
+            group.add(pill);
+        }
+        
+        group.position.set(12, -8, 8);
+        return group;
+    };
+
+    // Add all objects
+    healthObjects.push(
+        createDNAHelix(),
+        createMedicalCross(), 
+        createMolecule(),
+        createHeartRate(),
+        createVitamins()
+    );
+
+    healthObjects.forEach(obj => {
+        scene.add(obj);
+        
+        // Store animation data
+        obj.userData = {
+            rotationSpeed: 0.2 + Math.random() * 0.8,
+            floatSpeed: 0.3 + Math.random() * 0.7,
+            originalPosition: obj.position.clone()
+        };
+    });
+
+    // === HOLOGRAPHIC GRID FLOOR ===
+    const createHolographicGrid = () => {
+        const gridMaterial = createHolographicMaterial(0x3b82f6, 0x1d4ed8, 0.5); // Blue
+        const gridGroup = new THREE.Group();
+        
+        // Grid lines
+        for (let i = -20; i <= 20; i += 2) {
+            // Horizontal lines
+            const hLineGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-40, -15, i),
+                new THREE.Vector3(40, -15, i)
+            ]);
+            const hLine = new THREE.Line(hLineGeometry, gridMaterial);
+            gridGroup.add(hLine);
+            
+            // Vertical lines
+            const vLineGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(i, -15, -20),
+                new THREE.Vector3(i, -15, 20)
+            ]);
+            const vLine = new THREE.Line(vLineGeometry, gridMaterial);
+            gridGroup.add(vLine);
+        }
+        
+        return gridGroup;
+    };
+
+    const holographicGrid = createHolographicGrid();
+    scene.add(holographicGrid);
+
+    // === LIGHTING ===
+    const ambientLight = new THREE.AmbientLight(0x6366f1, 0.3); // Purple ambient
+    scene.add(ambientLight);
+
+    const mainLight = new THREE.DirectionalLight(0x8b5cf6, 1); // Purple directional
+    mainLight.position.set(10, 10, 5);
+    scene.add(mainLight);
+
+    // === ANIMATION LOOP ===
+    const clock = new THREE.Clock();
+    let animationId;
+    
+    const animate = () => {
+        const elapsedTime = clock.getElapsedTime();
+        
+        // Update all holographic materials
+        scene.traverse((object) => {
+            if (object.material && object.material.uniforms && object.material.uniforms.uTime) {
+                object.material.uniforms.uTime.value = elapsedTime;
+            }
+        });
+        
+        // Animate health objects
+        healthObjects.forEach((obj, index) => {
+            const userData = obj.userData;
+            
+            // Floating motion
+            obj.position.y = userData.originalPosition.y + 
+                Math.sin(elapsedTime * userData.floatSpeed + index) * 2;
+            
+            // Rotation
+            obj.rotation.y += userData.rotationSpeed * 0.01;
+            obj.rotation.x += userData.rotationSpeed * 0.005;
+        });
+        
+        // Camera gentle movement
+        camera.position.x = Math.sin(elapsedTime * 0.1) * 3;
+        camera.position.y = Math.cos(elapsedTime * 0.08) * 2;
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        
+        // Grid animation
+        holographicGrid.rotation.y += 0.002;
+        
+        renderer.render(scene, camera);
+        animationId = requestAnimationFrame(animate);
+    };
+    
+    animate();
+
+    // === RESIZE HANDLER ===
+    const handleResize = () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    };
+    
+    window.addEventListener('resize', handleResize);
+
+    // === STORE INSTANCE GLOBALLY FOR PERSISTENCE ===
+    window.healthSceneInstance = {
+        scene,
+        camera,
+        renderer,
+        healthObjects,
+        animationId,
+        mount: currentMount,
+        cleanup: () => {
+            if (animationId) cancelAnimationFrame(animationId);
+            window.removeEventListener('resize', handleResize);
+            
+            scene.traverse((object) => {
+                if (object.geometry) object.geometry.dispose();
+                if (object.material) {
+                    if (Array.isArray(object.material)) {
+                        object.material.forEach(material => material.dispose());
+                    } else {
+                        object.material.dispose();
+                    }
+                }
+            });
+            
+            if (renderer.domElement.parentNode) {
+                renderer.domElement.parentNode.removeChild(renderer.domElement);
+            }
+            renderer.dispose();
+            delete window.healthSceneInstance;
+        }
+    };
+
+    // === CLEANUP FUNCTION ===
+    return () => {
+        if (window.healthSceneInstance?.renderer.domElement.parentNode === currentMount) {
+            currentMount.removeChild(window.healthSceneInstance.renderer.domElement);
+        }
+    };
+}, []);
 
     // API call function
     const callNutritionAPI = async (foodQuery) => {
