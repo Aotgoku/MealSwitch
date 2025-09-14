@@ -124,12 +124,12 @@ useEffect(() => {
         };
     }
 
-    // === FUTURISTIC SCENE SETUP ===
+    // === SCENE SETUP ===
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x6366f1, 30, 200); // Purple fog to match background
+    scene.fog = new THREE.Fog(0x0f0f23, 50, 200);
     
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, 30);
+    camera.position.set(0, 0, 20);
     
     const renderer = new THREE.WebGLRenderer({
         antialias: true,
@@ -142,30 +142,83 @@ useEffect(() => {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     currentMount.appendChild(renderer.domElement);
 
-    // === HOLOGRAPHIC MATERIAL ===
-    const createHolographicMaterial = (color1, color2, speed = 1.0) => {
+    // === ENERGY ORB MATERIAL ===
+    const createEnergyOrbMaterial = (color, intensity = 1.0) => {
         return new THREE.ShaderMaterial({
             uniforms: {
                 uTime: { value: 0 },
-                uColor1: { value: new THREE.Color(color1) },
-                uColor2: { value: new THREE.Color(color2) },
-                uSpeed: { value: speed },
-                uFresnelPower: { value: 2.0 },
-                uScanlineFreq: { value: 20.0 },
-                uGlitchIntensity: { value: 0.1 },
-                uHologramStrength: { value: 0.8 }
+                uColor: { value: new THREE.Color(color) },
+                uIntensity: { value: intensity },
+                uPulseSpeed: { value: 2.0 },
+                uNoiseScale: { value: 1.5 }
             },
             vertexShader: `
+                uniform float uTime;
+                uniform float uNoiseScale;
                 varying vec3 vNormal;
                 varying vec3 vPosition;
                 varying vec2 vUv;
-                varying vec3 vWorldPosition;
-                uniform float uTime;
-                uniform float uGlitchIntensity;
                 
-                // Noise function for glitch effect
-                float random(vec2 st) {
-                    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+                // Simplex noise
+                vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+                vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+                
+                float snoise(vec3 v) {
+                    const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+                    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+                    
+                    vec3 i = floor(v + dot(v, C.yyy));
+                    vec3 x0 = v - i + dot(i, C.xxx);
+                    
+                    vec3 g = step(x0.yzx, x0.xyz);
+                    vec3 l = 1.0 - g;
+                    vec3 i1 = min(g.xyz, l.zxy);
+                    vec3 i2 = max(g.xyz, l.zxy);
+                    
+                    vec3 x1 = x0 - i1 + C.xxx;
+                    vec3 x2 = x0 - i2 + C.yyy;
+                    vec3 x3 = x0 - D.yyy;
+                    
+                    i = mod289(i);
+                    vec4 p = permute(permute(permute(
+                        i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                        + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                        + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+                    
+                    float n_ = 0.142857142857;
+                    vec3 ns = n_ * D.wyz - D.xzx;
+                    
+                    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+                    vec4 x_ = floor(j * ns.z);
+                    vec4 y_ = floor(j - 7.0 * x_);
+                    
+                    vec4 x = x_ *ns.x + ns.yyyy;
+                    vec4 y = y_ *ns.x + ns.yyyy;
+                    vec4 h = 1.0 - abs(x) - abs(y);
+                    
+                    vec4 b0 = vec4(x.xy, y.xy);
+                    vec4 b1 = vec4(x.zw, y.zw);
+                    
+                    vec4 s0 = floor(b0)*2.0 + 1.0;
+                    vec4 s1 = floor(b1)*2.0 + 1.0;
+                    vec4 sh = -step(h, vec4(0.0));
+                    
+                    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+                    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+                    
+                    vec3 p0 = vec3(a0.xy, h.x);
+                    vec3 p1 = vec3(a0.zw, h.y);
+                    vec3 p2 = vec3(a1.xy, h.z);
+                    vec3 p3 = vec3(a1.zw, h.w);
+                    
+                    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+                    
+                    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                    m = m * m;
+                    return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
                 }
                 
                 void main() {
@@ -174,67 +227,62 @@ useEffect(() => {
                     
                     vec3 pos = position;
                     
-                    // Holographic glitch effect
-                    float glitch = random(vec2(uTime * 10.0, position.y * 100.0)) * uGlitchIntensity;
-                    pos.x += sin(uTime * 5.0 + position.y * 10.0) * glitch;
-                    pos.z += cos(uTime * 3.0 + position.x * 8.0) * glitch * 0.5;
+                    // Energy surface distortion
+                    float noise1 = snoise(pos * uNoiseScale + uTime * 0.5);
+                    float noise2 = snoise(pos * uNoiseScale * 2.0 + uTime * 0.3);
                     
-                    // Gentle wave distortion
-                    pos += normal * sin(uTime * 2.0 + position.y * 5.0) * 0.1;
+                    pos += normal * (noise1 * 0.3 + noise2 * 0.15);
                     
-                    vWorldPosition = (modelMatrix * vec4(pos, 1.0)).xyz;
+                    // Pulsing effect
+                    float pulse = sin(uTime * 3.0) * 0.1 + 1.0;
+                    pos *= pulse;
+                    
                     vPosition = pos;
-                    
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
                 }
             `,
             fragmentShader: `
                 uniform float uTime;
-                uniform vec3 uColor1;
-                uniform vec3 uColor2;
-                uniform float uSpeed;
-                uniform float uFresnelPower;
-                uniform float uScanlineFreq;
-                uniform float uHologramStrength;
+                uniform vec3 uColor;
+                uniform float uIntensity;
+                uniform float uPulseSpeed;
                 
                 varying vec3 vNormal;
                 varying vec3 vPosition;
                 varying vec2 vUv;
-                varying vec3 vWorldPosition;
                 
                 void main() {
-                    vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
+                    vec3 viewDirection = normalize(cameraPosition - vPosition);
                     vec3 normal = normalize(vNormal);
                     
-                    // Fresnel effect for holographic rim
-                    float fresnel = 1.0 - max(dot(viewDirection, normal), 0.0);
-                    fresnel = pow(fresnel, uFresnelPower);
+                    // Fresnel effect for energy glow
+                    float fresnel = pow(1.0 - max(dot(viewDirection, normal), 0.0), 2.0);
                     
-                    // Animated scanlines
-                    float scanlines = sin((vPosition.y + uTime * uSpeed * 5.0) * uScanlineFreq) * 0.5 + 0.5;
-                    scanlines = pow(scanlines, 3.0);
+                    // Energy core
+                    float core = 1.0 - fresnel;
+                    core = pow(core, 3.0);
                     
-                    // Horizontal data streams
-                    float streams = sin((vPosition.x + uTime * uSpeed * 2.0) * 15.0) * 0.3 + 0.7;
+                    // Pulsing energy
+                    float pulse = sin(uTime * uPulseSpeed) * 0.3 + 0.7;
                     
-                    // Color mixing with holographic effect
-                    vec3 hologramColor = mix(uColor1, uColor2, fresnel);
-                    hologramColor = mix(hologramColor, uColor2 * 1.5, scanlines);
-                    hologramColor += uColor1 * streams * 0.3;
+                    // Energy rings
+                    float rings = sin(vPosition.y * 10.0 + uTime * 2.0) * 0.5 + 0.5;
+                    rings = pow(rings, 4.0);
                     
-                    // Pulsing intensity
-                    float pulse = sin(uTime * 3.0) * 0.2 + 0.8;
-                    hologramColor *= pulse;
+                    // Color mixing
+                    vec3 energyColor = uColor;
+                    energyColor += uColor * fresnel * 2.0; // Rim glow
+                    energyColor += vec3(0.8, 0.9, 1.0) * core * 0.5; // Core brightness
+                    energyColor += uColor * rings * 0.3; // Energy rings
                     
-                    // Edge glow
-                    float edgeGlow = pow(fresnel, 0.5) * uHologramStrength;
-                    hologramColor += uColor2 * edgeGlow * 2.0;
+                    energyColor *= pulse * uIntensity;
                     
-                    // Alpha based on fresnel and scanlines
-                    float alpha = (fresnel * 0.8 + scanlines * 0.4) * uHologramStrength;
+                    // Alpha for translucency
+                    float alpha = fresnel * 0.8 + core * 0.3;
+                    alpha *= pulse;
                     alpha = clamp(alpha, 0.1, 0.9);
                     
-                    gl_FragColor = vec4(hologramColor, alpha);
+                    gl_FragColor = vec4(energyColor, alpha);
                 }
             `,
             transparent: true,
@@ -243,225 +291,153 @@ useEffect(() => {
         });
     };
 
-    // === FUTURISTIC HEALTH OBJECTS ===
-    const healthObjects = [];
+    // === FLOATING ENERGY ORBS ===
+    const energyOrbs = [];
+    const orbCount = 8;
     
-    // DNA Helix
-    const createDNAHelix = () => {
-        const group = new THREE.Group();
-        const helixMaterial = createHolographicMaterial(0x8b5cf6, 0x06b6d4, 1.2); // Purple to cyan
+    // Health-themed colors that match the dark background
+    const orbColors = [
+        '#00f5ff', // Electric cyan
+        '#ff006e', // Hot pink
+        '#8338ec', // Purple
+        '#3a86ff', // Blue
+        '#06ffa5', // Mint green
+        '#ffbe0b', // Golden yellow
+        '#fb5607', // Orange red
+        '#ff4081'  // Bright pink
+    ];
+    
+    for (let i = 0; i < orbCount; i++) {
+        const orbGeometry = new THREE.SphereGeometry(1.5 + Math.random() * 1, 32, 32);
+        const orbMaterial = createEnergyOrbMaterial(orbColors[i], 1.2 + Math.random() * 0.8);
+        const orb = new THREE.Mesh(orbGeometry, orbMaterial);
         
-        for (let i = 0; i < 40; i++) {
-            const sphere = new THREE.Mesh(
-                new THREE.SphereGeometry(0.2, 8, 8),
-                helixMaterial
-            );
-            
-            const angle = (i / 40) * Math.PI * 4;
-            const y = i * 0.5 - 10;
-            sphere.position.set(
-                Math.cos(angle) * 2,
-                y,
-                Math.sin(angle) * 2
-            );
-            
-            const sphere2 = sphere.clone();
-            sphere2.position.set(
-                Math.cos(angle + Math.PI) * 2,
-                y,
-                Math.sin(angle + Math.PI) * 2
-            );
-            
-            group.add(sphere, sphere2);
-            
-            // Connecting lines
-            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-                sphere.position,
-                sphere2.position
-            ]);
-            const line = new THREE.Line(lineGeometry, helixMaterial);
-            group.add(line);
-        }
+        // Position orbs in 3D space
+        const angle = (i / orbCount) * Math.PI * 2;
+        const radius = 8 + Math.random() * 6;
+        const height = (Math.random() - 0.5) * 10;
         
-        group.position.set(-15, 0, -10);
-        group.rotation.z = Math.PI / 6;
-        return group;
-    };
-
-    // Medical Cross
-    const createMedicalCross = () => {
-        const group = new THREE.Group();
-        const crossMaterial = createHolographicMaterial(0x06d6a0, 0x10b981, 0.8); // Emerald green
-        
-        // Vertical bar
-        const vertical = new THREE.Mesh(
-            new THREE.BoxGeometry(1.5, 8, 0.5),
-            crossMaterial
+        orb.position.set(
+            Math.cos(angle) * radius,
+            height,
+            Math.sin(angle) * radius + (Math.random() - 0.5) * 5
         );
         
-        // Horizontal bar  
-        const horizontal = new THREE.Mesh(
-            new THREE.BoxGeometry(8, 1.5, 0.5),
-            crossMaterial
-        );
+        orb.userData = {
+            originalPosition: orb.position.clone(),
+            floatSpeed: 0.5 + Math.random() * 1.0,
+            rotateSpeed: 0.3 + Math.random() * 0.7,
+            orbitSpeed: 0.1 + Math.random() * 0.3,
+            orbitRadius: 2 + Math.random() * 3,
+            phaseOffset: Math.random() * Math.PI * 2
+        };
         
-        group.add(vertical, horizontal);
-        group.position.set(15, 5, -5);
-        return group;
-    };
+        energyOrbs.push(orb);
+        scene.add(orb);
+    }
 
-    // Molecular Structure
-    const createMolecule = () => {
-        const group = new THREE.Group();
-        const moleculeMaterial = createHolographicMaterial(0xf59e0b, 0xeab308, 1.5); // Golden yellow
-        
-        // Central atom
-        const center = new THREE.Mesh(
-            new THREE.SphereGeometry(1, 16, 16),
-            moleculeMaterial
-        );
-        group.add(center);
-        
-        // Orbiting electrons
-        for (let i = 0; i < 6; i++) {
-            const electron = new THREE.Mesh(
-                new THREE.SphereGeometry(0.3, 8, 8),
-                moleculeMaterial
-            );
-            
-            const angle = (i / 6) * Math.PI * 2;
-            const radius = 3 + Math.sin(i) * 1;
-            electron.position.set(
-                Math.cos(angle) * radius,
-                Math.sin(angle * 2) * 2,
-                Math.sin(angle) * radius
-            );
-            
-            group.add(electron);
-            
-            // Electron path
-            const orbitGeometry = new THREE.RingGeometry(radius - 0.1, radius + 0.1, 32);
-            const orbit = new THREE.Mesh(orbitGeometry, moleculeMaterial);
-            orbit.rotation.x = Math.PI / 2;
-            orbit.rotation.z = angle;
-            group.add(orbit);
-        }
-        
-        group.position.set(0, -10, 0);
-        return group;
-    };
-
-    // Heart Rate Monitor
-    const createHeartRate = () => {
-        const group = new THREE.Group();
-        const heartMaterial = createHolographicMaterial(0xef4444, 0xf87171, 2.0); // Red
+    // === ENERGY TRAILS ===
+    const createEnergyTrail = (startOrb, endOrb, color) => {
+        const trailMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                uTime: { value: 0 },
+                uColor: { value: new THREE.Color(color) },
+                uOpacity: { value: 0.4 }
+            },
+            vertexShader: `
+                uniform float uTime;
+                varying float vAlpha;
+                
+                void main() {
+                    vAlpha = sin(position.x * 0.1 + uTime * 2.0) * 0.5 + 0.5;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 uColor;
+                uniform float uOpacity;
+                varying float vAlpha;
+                
+                void main() {
+                    gl_FragColor = vec4(uColor, vAlpha * uOpacity);
+                }
+            `,
+            transparent: true,
+            blending: THREE.AdditiveBlending
+        });
         
         const points = [];
-        for (let i = 0; i < 100; i++) {
-            const x = (i - 50) * 0.3;
-            let y = 0;
-            
-            // Create heartbeat pattern
-            if (i > 45 && i < 55) {
-                y = Math.sin((i - 45) / 10 * Math.PI) * 3;
-            } else if (i > 35 && i < 45) {
-                y = Math.sin((i - 35) / 10 * Math.PI) * 1.5;
-            }
-            
-            points.push(new THREE.Vector3(x, y, 0));
+        for (let i = 0; i <= 20; i++) {
+            const t = i / 20;
+            const pos = new THREE.Vector3().lerpVectors(startOrb.position, endOrb.position, t);
+            points.push(pos);
         }
         
-        const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-        const heartLine = new THREE.Line(lineGeometry, heartMaterial);
-        group.add(heartLine);
+        const trailGeometry = new THREE.BufferGeometry().setFromPoints(points);
+        const trail = new THREE.Line(trailGeometry, trailMaterial);
         
-        group.position.set(-8, 12, 5);
-        return group;
+        trail.userData = { startOrb, endOrb, material: trailMaterial };
+        return trail;
     };
 
-    // Vitamin Pills
-    const createVitamins = () => {
-        const group = new THREE.Group();
-        const vitaminMaterial = createHolographicMaterial(0xa855f7, 0xc084fc, 1.0); // Purple
+    // Create energy trails between some orbs
+    const energyTrails = [];
+    for (let i = 0; i < orbCount - 1; i += 2) {
+        if (energyOrbs[i + 1]) {
+            const trail = createEnergyTrail(energyOrbs[i], energyOrbs[i + 1], orbColors[i]);
+            energyTrails.push(trail);
+            scene.add(trail);
+        }
+    }
+
+    // === AMBIENT ENERGY PARTICLES ===
+    const createAmbientParticles = () => {
+        const particleCount = 200;
+        const particles = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
         
-        for (let i = 0; i < 8; i++) {
-            const pill = new THREE.Mesh(
-                new THREE.CapsuleGeometry(0.5, 1.5, 4, 8),
-                vitaminMaterial
-            );
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
             
-            const angle = (i / 8) * Math.PI * 2;
-            pill.position.set(
-                Math.cos(angle) * 4,
-                Math.sin(angle * 1.5) * 2,
-                Math.sin(angle) * 2
-            );
-            pill.rotation.set(angle, angle * 0.5, 0);
+            particles[i3] = (Math.random() - 0.5) * 50;
+            particles[i3 + 1] = (Math.random() - 0.5) * 50;
+            particles[i3 + 2] = (Math.random() - 0.5) * 30;
             
-            group.add(pill);
+            const color = new THREE.Color(orbColors[Math.floor(Math.random() * orbColors.length)]);
+            colors[i3] = color.r;
+            colors[i3 + 1] = color.g;
+            colors[i3 + 2] = color.b;
         }
         
-        group.position.set(12, -8, 8);
-        return group;
+        const particleGeometry = new THREE.BufferGeometry();
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particles, 3));
+        particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        
+        const particleMaterial = new THREE.PointsMaterial({
+            size: 0.5,
+            transparent: true,
+            opacity: 0.6,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending
+        });
+        
+        return new THREE.Points(particleGeometry, particleMaterial);
     };
 
-    // Add all objects
-    healthObjects.push(
-        createDNAHelix(),
-        createMedicalCross(), 
-        createMolecule(),
-        createHeartRate(),
-        createVitamins()
-    );
-
-    healthObjects.forEach(obj => {
-        scene.add(obj);
-        
-        // Store animation data
-        obj.userData = {
-            rotationSpeed: 0.2 + Math.random() * 0.8,
-            floatSpeed: 0.3 + Math.random() * 0.7,
-            originalPosition: obj.position.clone()
-        };
-    });
-
-    // === HOLOGRAPHIC GRID FLOOR ===
-    const createHolographicGrid = () => {
-        const gridMaterial = createHolographicMaterial(0x3b82f6, 0x1d4ed8, 0.5); // Blue
-        const gridGroup = new THREE.Group();
-        
-        // Grid lines
-        for (let i = -20; i <= 20; i += 2) {
-            // Horizontal lines
-            const hLineGeometry = new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(-40, -15, i),
-                new THREE.Vector3(40, -15, i)
-            ]);
-            const hLine = new THREE.Line(hLineGeometry, gridMaterial);
-            gridGroup.add(hLine);
-            
-            // Vertical lines
-            const vLineGeometry = new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(i, -15, -20),
-                new THREE.Vector3(i, -15, 20)
-            ]);
-            const vLine = new THREE.Line(vLineGeometry, gridMaterial);
-            gridGroup.add(vLine);
-        }
-        
-        return gridGroup;
-    };
-
-    const holographicGrid = createHolographicGrid();
-    scene.add(holographicGrid);
+    const ambientParticles = createAmbientParticles();
+    scene.add(ambientParticles);
 
     // === LIGHTING ===
-    const ambientLight = new THREE.AmbientLight(0x6366f1, 0.3); // Purple ambient
+    const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.2);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.DirectionalLight(0x8b5cf6, 1); // Purple directional
-    mainLight.position.set(10, 10, 5);
-    scene.add(mainLight);
+    const keyLight = new THREE.DirectionalLight(0x00f5ff, 0.5);
+    keyLight.position.set(10, 10, 5);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xff006e, 0.3);
+    fillLight.position.set(-10, -5, -5);
+    scene.add(fillLight);
 
     // === ANIMATION LOOP ===
     const clock = new THREE.Clock();
@@ -470,33 +446,56 @@ useEffect(() => {
     const animate = () => {
         const elapsedTime = clock.getElapsedTime();
         
-        // Update all holographic materials
-        scene.traverse((object) => {
-            if (object.material && object.material.uniforms && object.material.uniforms.uTime) {
-                object.material.uniforms.uTime.value = elapsedTime;
-            }
-        });
-        
-        // Animate health objects
-        healthObjects.forEach((obj, index) => {
-            const userData = obj.userData;
+        // Update energy orbs
+        energyOrbs.forEach((orb, index) => {
+            const userData = orb.userData;
+            const time = elapsedTime + userData.phaseOffset;
             
-            // Floating motion
-            obj.position.y = userData.originalPosition.y + 
-                Math.sin(elapsedTime * userData.floatSpeed + index) * 2;
+            // Update material uniforms
+            orb.material.uniforms.uTime.value = elapsedTime;
+            
+            // Complex floating motion
+            orb.position.x = userData.originalPosition.x + 
+                Math.cos(time * userData.orbitSpeed) * userData.orbitRadius +
+                Math.sin(time * userData.floatSpeed) * 1;
+                
+            orb.position.y = userData.originalPosition.y + 
+                Math.sin(time * userData.floatSpeed) * 3 +
+                Math.cos(time * userData.orbitSpeed * 0.7) * 2;
+                
+            orb.position.z = userData.originalPosition.z + 
+                Math.sin(time * userData.orbitSpeed) * userData.orbitRadius * 0.5 +
+                Math.cos(time * userData.floatSpeed * 0.8) * 1.5;
             
             // Rotation
-            obj.rotation.y += userData.rotationSpeed * 0.01;
-            obj.rotation.x += userData.rotationSpeed * 0.005;
+            orb.rotation.x += userData.rotateSpeed * 0.01;
+            orb.rotation.y += userData.rotateSpeed * 0.015;
         });
         
-        // Camera gentle movement
-        camera.position.x = Math.sin(elapsedTime * 0.1) * 3;
-        camera.position.y = Math.cos(elapsedTime * 0.08) * 2;
-        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        // Update energy trails
+        energyTrails.forEach(trail => {
+            const { startOrb, endOrb, material } = trail.userData;
+            material.uniforms.uTime.value = elapsedTime;
+            
+            // Update trail geometry
+            const points = [];
+            for (let i = 0; i <= 20; i++) {
+                const t = i / 20;
+                const pos = new THREE.Vector3().lerpVectors(startOrb.position, endOrb.position, t);
+                // Add some curve to the trail
+                pos.y += Math.sin(t * Math.PI) * 2;
+                points.push(pos);
+            }
+            trail.geometry.setFromPoints(points);
+        });
         
-        // Grid animation
-        holographicGrid.rotation.y += 0.002;
+        // Rotate ambient particles
+        ambientParticles.rotation.y += 0.001;
+        
+        // Camera gentle movement
+        camera.position.x = Math.sin(elapsedTime * 0.1) * 2;
+        camera.position.y = Math.cos(elapsedTime * 0.08) * 1.5;
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
         
         renderer.render(scene, camera);
         animationId = requestAnimationFrame(animate);
@@ -519,7 +518,7 @@ useEffect(() => {
         scene,
         camera,
         renderer,
-        healthObjects,
+        energyOrbs,
         animationId,
         mount: currentMount,
         cleanup: () => {
@@ -1396,15 +1395,14 @@ const handleOptimizePlan = async () => {
             </footer>
 
             <style jsx>{`
-                .app-container {
-                    min-height: 100vh;
-                    position: relative;
-                    overflow-y: auto;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    width:98.5vw;
-                     overflow: hidden; 
-                }
-
+               .app-container {
+    min-height: 100vh;
+    position: relative;
+    overflow-y: auto;
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
+    width: 98.5vw;
+    overflow: hidden;
+}
                
 
                 .threejs-canvas {

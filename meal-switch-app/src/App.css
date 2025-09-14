@@ -23,9 +23,9 @@ body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background: linear-gradient(to bottom right, #111827, #3730a3, #5b21b6, #1e1b4b);
-  background-size: 400% 400%;
-  animation: moveGradient 15s ease infinite;
+  /* New Crystalline Theme Gradient */
+  background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+  background-size: 100% 100%;
 }
 
 @keyframes moveGradient {
