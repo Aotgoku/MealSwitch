@@ -55,13 +55,13 @@ const MessagesContainer = styled.div`
 const Message = styled.div`
   margin-bottom: 1rem;
   display: flex;
-  flex-direction: ${props => props.isUser ? 'row-reverse' : 'row'};
+ flex-direction: ${props => props.$isUser ? 'row-reverse' : 'row'};
 `;
 
 const MessageBubble = styled.div`
   padding: 0.5rem 1rem;
   border-radius: 12px;
-  background: ${props => props.isUser ? '#f97316' : '#292524'};
+  background: ${props => props.$isUser ? '#f97316' : '#292524'};
   color: white;
   max-width: 80%;
   white-space: pre-wrap;
@@ -158,11 +158,11 @@ const Chatbot = ({ goal, onClose, mealPlan }) => {
       </ChatHeader>
       <MessagesContainer>
         {messages.map((msg, index) => (
-          <Message key={index} isUser={msg.isUser}>
-            <MessageBubble isUser={msg.isUser}>{msg.text}</MessageBubble>
+          <Message key={index} $isUser={msg.isUser}>
+            <MessageBubble $isUser={msg.isUser}>{msg.text}</MessageBubble>
           </Message>
         ))}
-        {isLoading && <Message isUser={false}><MessageBubble isUser={false}>...</MessageBubble></Message>}
+         {isLoading && <Message $isUser={false}><MessageBubble $isUser={false}>...</MessageBubble></Message>}
         <div ref={messagesEndRef} />
       </MessagesContainer>
       <InputContainer>
