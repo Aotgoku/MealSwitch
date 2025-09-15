@@ -18,6 +18,7 @@ import ResultsView from './components/ResultsView';
 import './App.css';
 import MacroCard from './components/MacroCard';
 import ErrorDisplay from './components/ErrorDisplay';
+import { callNutritionAPI, getRecommendations, generateMealPlanAPI, optimizeMealPlanAPI } from './services/api';
 
 const OpenChatbotButton = styled.button`
   position: fixed;
@@ -564,54 +565,9 @@ const App = () => {
     }, [showResults]); // This is the only line that needs to be changed
 
     // API call function
-    const callNutritionAPI = async (foodQuery) => {
-        try {
-            const response = await fetch('http://127.0.0.1:8000/nutrition-analysis', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    food_name: foodQuery,
-                    portion_size: 1.0
-                })
-            });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
 
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error('API call failed:', error);
-            throw error;
-        }
-    };
 
-    const getRecommendations = async (foodQuery) => {
-        try {
-            const response = await fetch('http://127.0.0.1:8000/food-recommendations', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    query: foodQuery
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error('Recommendations API call failed:', error);
-            return null;
-        }
-    };
 
     const handleAnalyze = useCallback(async () => {
         if (!foodInput.trim() && !selectedImage) return;
@@ -738,7 +694,7 @@ const App = () => {
     // Results Component
 
     // Error Display Component
-   
+
 
     // Main render logic
     if (showResults) {
@@ -748,102 +704,102 @@ const App = () => {
             <div className="app-container">
                 <div ref={mountRef} className="threejs-canvas"></div>
                 <ResultsView analysisResult={analysisResult} goBackToMain={goBackToMain} />
-              
-{error && <ErrorDisplay error={error} setError={setError} />}
 
-                
+                {error && <ErrorDisplay error={error} setError={setError} />}
+
+
             </div>
         );
     }
 
-   // In App.jsx, replace your ENTIRE return statement with this:
+    // In App.jsx, replace your ENTIRE return statement with this:
 
-return (
-    <div className="app-container">
-        {/* Your Modals and Popups */}
-        {showMealPlanForm && <MealPlanForm onGenerate={handleGeneratePlan} onClose={() => setShowMealPlanForm(false)} isGenerating={isGeneratingPlan} details={mealPlanDetails} setDetails={setMealPlanDetails} />}
-        {showMealPlan && (
-            <MealPlan
-                planData={mealPlanData}
-                optimizedPlanData={optimizedPlanData}
-                onClose={() => {
-                    setShowMealPlan(false);
-                    setOptimizedPlanData(null);
-                }}
-                onOptimize={handleOptimizePlan}
-                isOptimizing={isGeneratingPlan}
-            />
-        )}
-        {showGoalModal && <GoalModal onGoalSelect={handleGoalSelection} />}
-        {userGoal && showChatbot && (
-            <Chatbot
-                goal={userGoal}
-                onClose={handleCloseChatbot}
-                mealPlan={optimizedPlanData || mealPlanData}
-            />
-        )}
+    return (
+        <div className="app-container">
+            {/* Your Modals and Popups */}
+            {showMealPlanForm && <MealPlanForm onGenerate={handleGeneratePlan} onClose={() => setShowMealPlanForm(false)} isGenerating={isGeneratingPlan} details={mealPlanDetails} setDetails={setMealPlanDetails} />}
+            {showMealPlan && (
+                <MealPlan
+                    planData={mealPlanData}
+                    optimizedPlanData={optimizedPlanData}
+                    onClose={() => {
+                        setShowMealPlan(false);
+                        setOptimizedPlanData(null);
+                    }}
+                    onOptimize={handleOptimizePlan}
+                    isOptimizing={isGeneratingPlan}
+                />
+            )}
+            {showGoalModal && <GoalModal onGoalSelect={handleGoalSelection} />}
+            {userGoal && showChatbot && (
+                <Chatbot
+                    goal={userGoal}
+                    onClose={handleCloseChatbot}
+                    mealPlan={optimizedPlanData || mealPlanData}
+                />
+            )}
 
-        {/* Your Floating Chatbot Button */}
-        {userGoal && !showChatbot && (
-            <OpenChatbotButton
-                onClick={handleOpenChatbot}
-                className="tooltip-host"
-                data-tooltip="AI Health Assistant"
-            >
-                <Bot />
-            </OpenChatbotButton>
-        )}
-
-        {/* Your 3D Canvas and Error Display */}
-        <div ref={mountRef} className="threejs-canvas"></div>
-        {error && <ErrorDisplay error={error} setError={setError} />}
-
-        {/* Your Floating Side Menu */}
-        <div className="floating-action-menu">
-            {[
-                { id: 'hero', icon: ChefHat, label: 'Go to Top' },
-                { id: 'features', icon: Sparkles, label: 'View Features' },
-                { id: 'demo', icon: BarChart3, label: 'See Demo' },
-                { id: 'stats', icon: Users, label: 'Read Reviews' }
-            ].map(({ id, icon: Icon, label }) => (
-                <button
-                    key={id}
-                    onClick={() => handleNavClick(id)}
-                    className={`floating-menu-button tooltip-host ${currentSection === id ? 'active' : ''}`}
-                    data-tooltip={label}
+            {/* Your Floating Chatbot Button */}
+            {userGoal && !showChatbot && (
+                <OpenChatbotButton
+                    onClick={handleOpenChatbot}
+                    className="tooltip-host"
+                    data-tooltip="AI Health Assistant"
                 >
-                    <Icon />
-                </button>
-            ))}
+                    <Bot />
+                </OpenChatbotButton>
+            )}
+
+            {/* Your 3D Canvas and Error Display */}
+            <div ref={mountRef} className="threejs-canvas"></div>
+            {error && <ErrorDisplay error={error} setError={setError} />}
+
+            {/* Your Floating Side Menu */}
+            <div className="floating-action-menu">
+                {[
+                    { id: 'hero', icon: ChefHat, label: 'Go to Top' },
+                    { id: 'features', icon: Sparkles, label: 'View Features' },
+                    { id: 'demo', icon: BarChart3, label: 'See Demo' },
+                    { id: 'stats', icon: Users, label: 'Read Reviews' }
+                ].map(({ id, icon: Icon, label }) => (
+                    <button
+                        key={id}
+                        onClick={() => handleNavClick(id)}
+                        className={`floating-menu-button tooltip-host ${currentSection === id ? 'active' : ''}`}
+                        data-tooltip={label}
+                    >
+                        <Icon />
+                    </button>
+                ))}
+            </div>
+
+            {/* Your Main Page Structure */}
+            <Navbar handleNavClick={handleNavClick} />
+
+            {/* The SINGLE Correct <main> Tag Wrapping All Your Sections */}
+            <main className="main-content">
+                <Hero
+                    heroRef={heroRef}
+                    isVisible={isVisible.hero || false}
+                    foodInput={foodInput}
+                    setFoodInput={setFoodInput}
+                    currentTab={currentTab}
+                    setCurrentTab={setCurrentTab}
+                    selectedImage={selectedImage}
+                    handleImageUpload={handleImageUpload}
+                    isAnalyzing={isAnalyzing}
+                    handleAnalyze={handleAnalyze}
+                    setShowMealPlanForm={setShowMealPlanForm}
+                />
+                <Features featuresRef={featuresRef} isVisible={isVisible.features || false} />
+                <Demo demoRef={demoRef} />
+                <Stats statsRef={statsRef} isVisible={isVisible.stats || false} />
+                <CTA ctaRef={ctaRef} isVisible={isVisible.cta || false} />
+            </main>
+
+            <Footer />
         </div>
-
-        {/* Your Main Page Structure */}
-        <Navbar handleNavClick={handleNavClick} />
-
-        {/* The SINGLE Correct <main> Tag Wrapping All Your Sections */}
-        <main className="main-content">
-            <Hero
-                heroRef={heroRef}
-                isVisible={isVisible.hero || false}
-                foodInput={foodInput}
-                setFoodInput={setFoodInput}
-                currentTab={currentTab}
-                setCurrentTab={setCurrentTab}
-                selectedImage={selectedImage}
-                handleImageUpload={handleImageUpload}
-                isAnalyzing={isAnalyzing}
-                handleAnalyze={handleAnalyze}
-                setShowMealPlanForm={setShowMealPlanForm}
-            />
-            <Features featuresRef={featuresRef} isVisible={isVisible.features || false} />
-            <Demo demoRef={demoRef} />
-            <Stats statsRef={statsRef} isVisible={isVisible.stats || false} />
-            <CTA ctaRef={ctaRef} isVisible={isVisible.cta || false} />
-        </main>
-
-        <Footer />
-    </div>
-);
+    );
 };
 
 export default App;
