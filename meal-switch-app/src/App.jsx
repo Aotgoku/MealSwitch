@@ -68,6 +68,7 @@ const App = () => {
         targetCalories: 2000,
     });
     const [optimizedPlanData, setOptimizedPlanData] = useState(null);
+    const [proactiveMessage, setProactiveMessage] = useState('');
 
 
     const mountRef = useRef(null);
@@ -564,6 +565,19 @@ const App = () => {
         };
     }, [showResults]); // This is the only line that needs to be changed
 
+    // This new hook "listens" ONLY for optimizedPlanData to change
+    useEffect(() => {
+        if (optimizedPlanData) {
+            // OK, React has updated the state. NOW we check for swaps.
+            const swapCount = Object.values(optimizedPlanData.plan).filter(meal => meal.suggestion).length;
+            if (swapCount > 0) {
+                // Now we trigger the proactive message and open the chat
+                setProactiveMessage(`Hi! I've analyzed your plan and found ${swapCount} smart swap${swapCount > 1 ? 's' : ''}. I've added the new suggestions to your meal plan. Ask me about them!`);
+                setShowChatbot(true);
+            }
+        }
+    }, [optimizedPlanData]); // <-- This dependency array makes the hook run ONLY when optimizedPlanData gets a new value.
+
     // API call function
 
 
@@ -661,8 +675,16 @@ const App = () => {
             });
             const data = await response.json();
             if (data.status === 'ok') {
-                // Store the new, optimized plan in our new state variable
                 setOptimizedPlanData(data.optimized_plan);
+
+                // --- ADD THIS NEW LOGIC ---
+                const swapCount = Object.values(data.optimized_plan.plan).filter(meal => meal.suggestion).length;
+                if (swapCount > 0) {
+                    setProactiveMessage(`Hi! I've analyzed your plan and found ${swapCount} smart swap${swapCount > 1 ? 's' : ''}. I've added the new suggestions to your meal plan. Ask me about them!`);
+                    setShowChatbot(true); // Automatically open the chat
+                }
+                // --- END OF NEW LOGIC ---
+
             } else {
                 throw new Error("Failed to optimize plan.");
             }
