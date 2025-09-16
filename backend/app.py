@@ -577,6 +577,8 @@ def quick_search(query: str):
     
 # NEW: Chatbot Endpoint
 # ========================
+# In backend/app.py
+
 @app.post("/chat")
 def chat_with_gemini(request: ChatRequest):
     """Chat with the AI Health Assistant, with optional meal plan context."""
@@ -592,20 +594,35 @@ def chat_with_gemini(request: ChatRequest):
         The user's primary health goal is: "{request.goal.replace('_', ' ')}".
         """
 
-        # Conditionally add the meal plan to the prompt if the user has one
         if request.meal_plan:
             import json
-            # Convert the plan dictionary to a nicely formatted string
             plan_str = json.dumps(request.meal_plan, indent=2)
+            
+            # Check if this plan has been optimized by our local model
+            has_swaps = any("suggestion" in meal for meal in request.meal_plan.get("plan", {}).values() if isinstance(meal, dict))
+
             prompt += f"""
-            The user is currently viewing the following personalized meal plan. Base your answer on this plan:
+            The user is currently viewing the following personalized meal plan. 
+            THIS JSON IS THEIR PRIMARY CONTEXT. You MUST base your answers on this data.
             ---
             {plan_str}
             ---
             """
 
+            if has_swaps:
+                prompt += """
+                CRITICAL INSTRUCTION HIERARCHY: Your response about swaps MUST follow this priority:
+                1. FIRST PRIORITY: The user's plan contains MealSwitch "suggestion" swaps (inside the "suggestion" key). If the user asks for a swap, you MUST give this specific swap from the JSON as the primary answer. (e.g., "Our model suggests swapping with 'Ragi Veg Paratha' to save 120 calories.").
+                2. SECOND PRIORITY: If the user asks for *more* suggestions, *other* ideas, or if no "suggestion" key exists for that meal in the JSON, you are then free to use your general knowledge as an expert nutritionist to provide *additional* healthy alternatives.
+                """
+            else:
+                 prompt += """
+                INSTRUCTION: This plan does not have pre-calculated swaps. If the user asks for swaps or alternatives, use your general knowledge as an expert nutritionist to suggest healthy options.
+                """
+
+
         prompt += f"""
-        Now, answer the user's question concisely, helpfully, and in the context of their goal and the provided meal plan (if any).
+        Now, answer the user's question concisely, helpfully, and by following your instruction hierarchy.
         Provide safe, general health and nutrition advice. Do not provide medical advice.
 
         User's question: "{request.message}"
