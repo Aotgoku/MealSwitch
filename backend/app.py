@@ -4,15 +4,18 @@ from pydantic import BaseModel
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 import logging
 import traceback
 # Add these lines with your other imports
 import os
 import google.generativeai as genai
+from google.generativeai.types import GenerationConfig
 # Add this line with your other imports at the top of app.py
 from starlette.responses import JSONResponse
 import json # For parsing JSON responses
+import re # For finding the JSON block
+import asyncio # For making the function non-blocking
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,20 +24,6 @@ logger = logging.getLogger(__name__)
 # Set your Google API key
 # Paste this block after your logging configuration
 
-# ========================
-# NEW: Configure Gemini API
-# ========================
-# IMPORTANT: Replace "YOUR_API_KEY" with the key you copied
-# For better security, use environment variables in a real project
-try:
-    # Make sure to replace 'YOUR_API_KEY' with your actual key
-    GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', 'AIzaSyBVASGrFU3ogOI5nL7jeO0zM8dsIYqtgJ4') 
-    genai.configure(api_key=GOOGLE_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    logger.info("✅ Gemini API configured successfully!")
-except Exception as e:
-    logger.error(f"❌ Error configuring Gemini API: {e}")
-    model = None
 
 # ========================
 # Load your dataset
@@ -217,6 +206,39 @@ def find_optimized_suggestion(food_name: str):
     return None
 
 # ========================
+# NEW: Configure Gemini API
+# ========================
+# IMPORTANT: Replace "YOUR_API_KEY" with the key you copied
+# For better security, use environment variables in a real project
+# ========================
+# NEW: Configure Gemini API with Tools
+# ========================
+# This block now correctly combines the API key setup with the tool configuration.
+try:
+    # First, configure the API key
+    GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY', 'AIzaSyBVASGrFU3ogOI5nL7jeO0zM8dsIYqtgJ4')
+    genai.configure(api_key=GOOGLE_API_KEY)
+
+    # Then, define the tools (your Python functions) that the AI can use
+    tools = [
+        get_food_info,
+        find_optimized_suggestion,
+        get_alternative_suggestions
+    ]
+
+    # Finally, create the model and pass it the tools
+    model = genai.GenerativeModel(
+        model_name='gemini-1.5-flash',
+        tools=tools
+    )
+    logger.info("✅ Gemini API configured successfully with tools!")
+
+except Exception as e:
+    logger.error(f"❌ Error configuring Gemini API: {e}")
+    model = None
+
+
+# ========================
 # FastAPI setup
 # ========================
 app = FastAPI(
@@ -253,12 +275,23 @@ class ImageAnalysisRequest(BaseModel):
 
 # Add this new Pydantic model with your others
 
+# A new helper model for chat history parts
+class ChatPart(BaseModel):
+    text: str
+
+# A new helper model for a single entry in the chat history
+class ChatHistoryEntry(BaseModel):
+    role: str
+    parts: List[ChatPart]
+
+# The upgraded ChatRequest model
 class ChatRequest(BaseModel):
     message: str
     goal: str
-    history: Optional[List[Dict[str, str]]] = []
-    meal_plan: Optional[dict] = None # <-- ADD THIS LINE
-
+    # This now correctly expects the detailed history object
+    history: Optional[List[ChatHistoryEntry]] = []
+    meal_plan: Optional[dict] = None
+    
     # Add this model with your others (like ChatRequest)
 class MealPlanRequest(BaseModel):
     goal: str
@@ -579,59 +612,71 @@ def quick_search(query: str):
 # ========================
 # In backend/app.py
 
+# In backend/app.py
+
 @app.post("/chat")
-def chat_with_gemini(request: ChatRequest):
-    """Chat with the AI Health Assistant, with optional meal plan context."""
+async def chat_with_gemini(request: ChatRequest):
+    """Chat with the AI Health Assistant, now with tool-use capabilities."""
     logger.info(f"📡 /chat called with goal: {request.goal}")
 
     if not model:
         raise HTTPException(status_code=500, detail="Gemini model not configured. Check API key.")
 
     try:
-        # --- NEW CONTEXT-AWARE PROMPT ---
+        # --- Context-Aware Prompt (remains the same) ---
         prompt = f"""
         You are 'MealSwitch', a friendly, expert AI health and nutrition assistant.
         The user's primary health goal is: "{request.goal.replace('_', ' ')}".
         """
-
         if request.meal_plan:
             import json
             plan_str = json.dumps(request.meal_plan, indent=2)
-            
-            # Check if this plan has been optimized by our local model
             has_swaps = any("suggestion" in meal for meal in request.meal_plan.get("plan", {}).values() if isinstance(meal, dict))
 
-            prompt += f"""
-            The user is currently viewing the following personalized meal plan. 
-            THIS JSON IS THEIR PRIMARY CONTEXT. You MUST base your answers on this data.
-            ---
-            {plan_str}
-            ---
-            """
-
+            prompt += f"The user is viewing this meal plan: {plan_str}\n"
             if has_swaps:
-                prompt += """
-                CRITICAL INSTRUCTION HIERARCHY: Your response about swaps MUST follow this priority:
-                1. FIRST PRIORITY: The user's plan contains MealSwitch "suggestion" swaps (inside the "suggestion" key). If the user asks for a swap, you MUST give this specific swap from the JSON as the primary answer. (e.g., "Our model suggests swapping with 'Ragi Veg Paratha' to save 120 calories.").
-                2. SECOND PRIORITY: If the user asks for *more* suggestions, *other* ideas, or if no "suggestion" key exists for that meal in the JSON, you are then free to use your general knowledge as an expert nutritionist to provide *additional* healthy alternatives.
-                """
-            else:
-                 prompt += """
-                INSTRUCTION: This plan does not have pre-calculated swaps. If the user asks for swaps or alternatives, use your general knowledge as an expert nutritionist to suggest healthy options.
-                """
+                prompt += "CRITICAL: If the user asks for a swap, FIRST mention the 'suggestion' from the JSON. For OTHER ideas, use your general knowledge.\n"
 
+        prompt += f"Now, answer the user's question: \"{request.message}\""
 
-        prompt += f"""
-        Now, answer the user's question concisely, helpfully, and by following your instruction hierarchy.
-        Provide safe, general health and nutrition advice. Do not provide medical advice.
-
-        User's question: "{request.message}"
-        """
-        # --- END OF PROMPT ---
-
-        response = model.generate_content(prompt)
+        # --- REVISED TOOL-CALLING LOGIC ---
+        chat_session = model.start_chat(history=[entry.dict() for entry in request.history])
         
-        logger.info(f"✅ Gemini context-aware response generated successfully.")
+        # Send the initial message
+        response = await asyncio.to_thread(chat_session.send_message, prompt)
+        
+        # This is the corrected loop
+        # It now safely checks if 'function_calls' exists before trying to access it.
+        candidate = response.candidates[0]
+        while hasattr(candidate, 'function_calls') and candidate.function_calls:
+            function_calls = candidate.function_calls
+            logger.info(f"🤖 AI is requesting to use a tool: {function_calls[0].name}")
+
+            # Call the requested function(s)
+            api_requests_and_responses = []
+            for call in function_calls:
+                # Find the actual Python function
+                api_function = globals().get(call.name)
+                if api_function:
+                    # Call the function with arguments provided by the AI
+                    function_args = {key: value for key, value in call.args.items()}
+                    api_response = api_function(**function_args)
+                    
+                    # Send the function's result back to the AI
+                    api_requests_and_responses.append({
+                        "tool_code": f"print({call.name}({function_args}))",
+                        "tool_output": str(api_response) # Convert result to string
+                    })
+
+            # Send the tool's output back to the model to get a final response
+            response = await asyncio.to_thread(
+                chat_session.send_message,
+                content=str(api_requests_and_responses)
+            )
+            # Update the candidate object for the next iteration of the loop
+            candidate = response.candidates[0]
+
+        logger.info("✅ Gemini final response generated successfully.")
         return {"status": "ok", "reply": response.text}
 
     except Exception as e:
@@ -641,62 +686,70 @@ def chat_with_gemini(request: ChatRequest):
 # ========================
 # NEW: Meal Plan Generator Endpoint
 # ========================
+# NEW: Meal Plan Generator Endpoint (More Robust)
 @app.post("/generate-meal-plan")
-def generate_meal_plan(request: MealPlanRequest):
-    """Generates a daily meal plan using the Gemini API"""
+async def generate_meal_plan(request: MealPlanRequest):
+    """Generates a daily meal plan using the Gemini API with robust JSON parsing."""
     logger.info(f"📡 /generate-meal-plan called with goal: {request.goal}, calories: {request.calories}")
 
     if not model:
         raise HTTPException(status_code=500, detail="Gemini model not configured.")
 
+    # The prompt remains the same
+    prompt = f"""
+    Act as an elite sports nutritionist and expert chef. Your task is to generate a simple, healthy, and delicious daily meal plan based on the user's specific details.
+    **User's Details:**
+    - **Primary Goal:** {request.goal.replace('_', ' ')}
+    - **Target Daily Calories:** Approximately {request.calories}
+    - **Preferred Cuisine:** {request.cuisine}
+    """
+    if request.age: prompt += f"- **Age:** {request.age}\n"
+    if request.weight_kg: prompt += f"- **Weight:** {request.weight_kg} kg\n"
+    if request.height_cm: prompt += f"- **Height:** {request.height_cm} cm\n"
+    if request.gender: prompt += f"- **Gender:** {request.gender}\n"
+    prompt += """
+    **Instructions:**
+    1. Create a meal plan with three meals: Breakfast, Lunch, and Dinner.
+    2. For each meal, provide a "name" and a short, appealing "description" (1-2 sentences).
+    3. Estimate the "calories" for each meal. The sum for all three meals MUST be very close to the target daily calories.
+    4. Provide a concise "reason" (1-2 sentences) explaining why this specific plan is effective for the user's goal.
+    **CRITICAL:** Your entire output must be ONLY a single, valid JSON object.
+    Do not include any text, explanations, or markdown formatting (like ```json) before or after the JSON.
+    The JSON object must follow this exact structure:
+    {"plan": {"breakfast": {"name": "Meal Name", "description": "...", "calories": <number>}, "lunch": {...}, "dinner": {...}}, "totalCalories": <number>, "reason": "..."}
+    """
+
+    raw_text_response = "" # Initialize to ensure it's available for logging
     try:
-        # The prompt is the same as before
-        prompt = f"""
-        Act as an elite sports nutritionist and expert chef. Your task is to generate a simple, healthy, and delicious daily meal plan based on the user's specific details.
-        **User's Details:**
-        - **Primary Goal:** {request.goal.replace('_', ' ')}
-        - **Target Daily Calories:** Approximately {request.calories}
-        - **Preferred Cuisine:** {request.cuisine}
-        """
-        if request.age: prompt += f"- **Age:** {request.age}\n"
-        if request.weight_kg: prompt += f"- **Weight:** {request.weight_kg} kg\n"
-        if request.height_cm: prompt += f"- **Height:** {request.height_cm} cm\n"
-        if request.gender: prompt += f"- **Gender:** {request.gender}\n"
-        prompt += """
-        **Instructions:**
-        1. Create a meal plan with three meals: Breakfast, Lunch, and Dinner.
-        2. For each meal, provide a "name" and a short, appealing "description" (1-2 sentences).
-        3. Estimate the "calories" for each meal. The sum for all three meals MUST be very close to the target daily calories.
-        4. Provide a concise "reason" (1-2 sentences) explaining why this specific plan is effective for the user's goal, considering their provided details.
-        **CRITICAL:** Your entire output must be ONLY a single, valid JSON object.
-        Do not include any text, explanations, or markdown formatting (like ```json) before or after the JSON.
-        The JSON object must follow this exact structure:
-        {"plan": {"breakfast": {"name": "Meal Name", "description": "...", "calories": <number>}, "lunch": {...}, "dinner": {...}}, "totalCalories": <number>, "reason": "..."}
-        """
+        # Run the AI call in a background thread to prevent blocking
+        response = await asyncio.to_thread(model.generate_content, prompt)
+        raw_text_response = response.text
 
-        response = model.generate_content(prompt)
-        
-        # --- THIS IS THE FIX ---
-        # More robustly find and extract the JSON from the response text
-        # This looks for the first '{' and the last '}' to isolate the JSON block
-        text = response.text
-        start_index = text.find('{')
-        end_index = text.rfind('}') + 1
-        
+        # --- THE BULLETPROOF FIX ---
+        # 1. Log the raw response immediately for debugging.
+        logger.info(f"📝 Raw AI Response Received:\n---\n{raw_text_response}\n---")
+
+        # 2. Find the JSON block starting with '{' and ending with '}'
+        start_index = raw_text_response.find('{')
+        end_index = raw_text_response.rfind('}') + 1
+
         if start_index != -1 and end_index != 0:
-            json_str = text[start_index:end_index]
+            json_str = raw_text_response[start_index:end_index]
             plan_data = json.loads(json_str)
+            logger.info("✅ Gemini meal plan generated and parsed successfully.")
+            return {"status": "ok", "plan_data": plan_data}
         else:
-            raise ValueError("No valid JSON object found in the AI response.")
+            # This will now be our main error if no JSON is found at all
+            logger.error("❌ No JSON object found in the AI's response.")
+            raise ValueError("No valid JSON object could be extracted from the AI response.")
 
-        logger.info(f"✅ Gemini meal plan generated successfully.")
-        return {"status": "ok", "plan_data": plan_data}
-
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ JSON DECODE ERROR: {e}. The extracted string was: '{json_str}'")
+        raise HTTPException(status_code=500, detail=f"The AI returned a malformed plan. Please try again.")
     except Exception as e:
-        logger.error(f"❌ Error in meal plan generation: {e}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Error generating meal plan: {str(e)}")
-
+        logger.error(f"❌ An unexpected error occurred in meal plan generation: {e}")
+        logger.error(traceback.format_exc()) # Log the full traceback for debugging
+        raise HTTPException(status_code=500, detail=f"An internal error occurred while generating the meal plan.")
     # NEW ENDPOINT FOR THE OPTIMIZER FEATURE
 @app.post("/optimize-plan")
 def optimize_meal_plan(request: MealPlanOptimizeRequest):

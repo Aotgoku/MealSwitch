@@ -753,11 +753,13 @@ const App = () => {
                 />
             )}
             {showGoalModal && <GoalModal onGoalSelect={handleGoalSelection} />}
-            {userGoal && showChatbot && (
+           {userGoal && showChatbot && (
                 <Chatbot
                     goal={userGoal}
                     onClose={handleCloseChatbot}
                     mealPlan={optimizedPlanData || mealPlanData}
+                    proactiveMessage={proactiveMessage}
+                    clearProactiveMessage={() => setProactiveMessage('')}
                 />
             )}
 

@@ -94,7 +94,13 @@ const SendButton = styled.button`
   margin-left: 0.5rem;
 `;
 
-const Chatbot = ({ goal, onClose, mealPlan }) => {
+const Chatbot = ({ goal, onClose, mealPlan, proactiveMessage, clearProactiveMessage }) => {
+  useEffect(() => {
+    if (proactiveMessage) {
+      setMessages(prev => [...prev, { text: proactiveMessage, isUser: false }]);
+      clearProactiveMessage();
+    }
+  }, [proactiveMessage, clearProactiveMessage]);
   const [messages, setMessages] = useState([
     { text: `Hello! I'm your AI health assistant. How can I help you with your goal of ${goal.replace(/_/g, ' ')} today?`, isUser: false }
   ]);
@@ -108,11 +114,14 @@ const Chatbot = ({ goal, onClose, mealPlan }) => {
 
   useEffect(scrollToBottom, [messages]);
 
-  const handleSend = async () => {
+ const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage = { text: input, isUser: true };
-    setMessages(prev => [...prev, userMessage]);
+    // We create the new messages array *before* setting the state
+    const newMessages = [...messages, userMessage];
+    
+    setMessages(newMessages); // Update the UI immediately
     setInput('');
     setIsLoading(true);
 
@@ -123,13 +132,19 @@ const Chatbot = ({ goal, onClose, mealPlan }) => {
             body: JSON.stringify({
                 message: input,
                 goal: goal,
-                history: [],
-                meal_plan: mealPlan  // You can optionally send chat history
+                // CORRECTED PART: This now perfectly matches the backend model.
+                // We are creating a new array from `newMessages` for the history.
+                history: newMessages.slice(0, -1).map(msg => ({ 
+                    role: msg.isUser ? 'user' : 'model', 
+                    parts: [{ text: msg.text }] 
+                })),
+                meal_plan: mealPlan
             })
         });
 
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Network response was not ok');
         }
 
         const data = await response.json();
@@ -138,12 +153,13 @@ const Chatbot = ({ goal, onClose, mealPlan }) => {
 
     } catch (error) {
         console.error("Error fetching AI response:", error);
-        const errorResponse = { text: "Sorry, I'm having trouble connecting. Please check your backend server.", isUser: false };
+        const errorResponse = { text: `Sorry, I'm having trouble connecting. Error: ${error.message}`, isUser: false };
         setMessages(prev => [...prev, errorResponse]);
     } finally {
         setIsLoading(false);
     }
   };
+
 
   return (
     <ChatContainer>
@@ -153,7 +169,7 @@ const Chatbot = ({ goal, onClose, mealPlan }) => {
           <span>AI Health Assistant</span>
         </HeaderTitle>
         <CloseButton onClick={onClose}>
-            <X size={20} />
+          <X size={20} />
         </CloseButton>
       </ChatHeader>
       <MessagesContainer>
@@ -162,7 +178,7 @@ const Chatbot = ({ goal, onClose, mealPlan }) => {
             <MessageBubble $isUser={msg.isUser}>{msg.text}</MessageBubble>
           </Message>
         ))}
-         {isLoading && <Message $isUser={false}><MessageBubble $isUser={false}>...</MessageBubble></Message>}
+        {isLoading && <Message $isUser={false}><MessageBubble $isUser={false}>...</MessageBubble></Message>}
         <div ref={messagesEndRef} />
       </MessagesContainer>
       <InputContainer>
