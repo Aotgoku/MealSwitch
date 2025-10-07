@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { Bot, Send, X } from 'lucide-react';
+import SmartSwaps from './SmartSwaps'; // Ensure this component exists and is imported correctly.
 
 const ChatContainer = styled.div`
   position: fixed;
@@ -15,6 +16,7 @@ const ChatContainer = styled.div`
   flex-direction: column;
   overflow: hidden;
   z-index: 1000;
+  transition: all 0.3s ease-in-out;
 `;
 
 const ChatHeader = styled.div`
@@ -24,12 +26,14 @@ const ChatHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  cursor: default;
 `;
 
 const HeaderTitle = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
+  font-weight: 600;
 `;
 
 const CloseButton = styled.button`
@@ -55,7 +59,7 @@ const MessagesContainer = styled.div`
 const Message = styled.div`
   margin-bottom: 1rem;
   display: flex;
- flex-direction: ${props => props.$isUser ? 'row-reverse' : 'row'};
+  flex-direction: ${props => props.$isUser ? 'row-reverse' : 'row'};
 `;
 
 const MessageBubble = styled.div`
@@ -65,9 +69,10 @@ const MessageBubble = styled.div`
   color: white;
   max-width: 80%;
   white-space: pre-wrap;
+  word-wrap: break-word;
 `;
 
-const InputContainer = styled.div`
+const InputContainer = styled.form`
   display: flex;
   padding: 1rem;
   border-top: 1px solid #44403c;
@@ -92,15 +97,27 @@ const SendButton = styled.button`
   color: #f97316;
   cursor: pointer;
   margin-left: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &:disabled {
+    color: #555;
+    cursor: not-allowed;
+  }
 `;
 
+// Helper function to check if a string is valid JSON
+const isJsonString = (str) => {
+  if (typeof str !== 'string') return false;
+  try {
+    const parsed = JSON.parse(str);
+    return (typeof parsed === 'object' && parsed !== null);
+  } catch (e) {
+    return false;
+  }
+};
+
 const Chatbot = ({ goal, onClose, mealPlan, proactiveMessage, clearProactiveMessage }) => {
-  useEffect(() => {
-    if (proactiveMessage) {
-      setMessages(prev => [...prev, { text: proactiveMessage, isUser: false }]);
-      clearProactiveMessage();
-    }
-  }, [proactiveMessage, clearProactiveMessage]);
   const [messages, setMessages] = useState([
     { text: `Hello! I'm your AI health assistant. How can I help you with your goal of ${goal.replace(/_/g, ' ')} today?`, isUser: false }
   ]);
@@ -108,91 +125,101 @@ const Chatbot = ({ goal, onClose, mealPlan, proactiveMessage, clearProactiveMess
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
+  useEffect(() => {
+    if (proactiveMessage) {
+      setMessages(prev => [...prev, { text: proactiveMessage, isUser: false }]);
+      clearProactiveMessage();
+    }
+  }, [proactiveMessage, clearProactiveMessage]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(scrollToBottom, [messages]);
 
- const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (e) => {
+    e.preventDefault(); // Prevent form submission from reloading the page
+    const userMessageText = input.trim();
+    if (!userMessageText || isLoading) return;
 
-    const userMessage = { text: input, isUser: true };
-    // We create the new messages array *before* setting the state
-    const newMessages = [...messages, userMessage];
-    
-    setMessages(newMessages); // Update the UI immediately
+    // 1. Prepare history BEFORE updating state. This is what we'll send to the API.
+    const historyForApi = messages.map(msg => ({
+      role: msg.isUser ? 'user' : 'model',
+      parts: [{ text: msg.text }]
+    }));
+
+    // 2. Optimistically update the UI with the user's message.
+    setMessages(prevMessages => [...prevMessages, { text: userMessageText, isUser: true }]);
     setInput('');
     setIsLoading(true);
 
     try {
-        const response = await fetch('http://127.0.0.1:8000/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: input,
-                goal: goal,
-                // CORRECTED PART: This now perfectly matches the backend model.
-                // We are creating a new array from `newMessages` for the history.
-                history: newMessages.slice(0, -1).map(msg => ({ 
-                    role: msg.isUser ? 'user' : 'model', 
-                    parts: [{ text: msg.text }] 
-                })),
-                meal_plan: mealPlan
-            })
-        });
+      // 3. Make the API call with the PREPARED history and the current message text.
+      const response = await fetch('http://127.0.0.1:8000/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMessageText,
+          goal: goal,
+          history: historyForApi,
+          meal_plan: mealPlan
+        })
+      });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Network response was not ok');
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'The server returned an error.');
+      }
 
-        const data = await response.json();
-        const botResponse = { text: data.reply, isUser: false };
-        setMessages(prev => [...prev, botResponse]);
+      const data = await response.json();
+      const botResponse = { text: data.reply, isUser: false };
+      
+      // 4. Add the bot's response to the message list.
+      setMessages(prevMessages => [...prevMessages, botResponse]);
 
     } catch (error) {
-        console.error("Error fetching AI response:", error);
-        const errorResponse = { text: `Sorry, I'm having trouble connecting. Error: ${error.message}`, isUser: false };
-        setMessages(prev => [...prev, errorResponse]);
+      console.error("Error fetching AI response:", error);
+      const errorResponse = { text: `Sorry, there was an error. Please try again.`, isUser: false };
+      setMessages(prevMessages => [...prevMessages, errorResponse]);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
-
 
   return (
     <ChatContainer>
       <ChatHeader>
-        <HeaderTitle>
-          <Bot />
-          <span>AI Health Assistant</span>
-        </HeaderTitle>
-        <CloseButton onClick={onClose}>
-          <X size={20} />
-        </CloseButton>
+        <HeaderTitle><Bot /><span>AI Health Assistant</span></HeaderTitle>
+        <CloseButton onClick={onClose}><X size={20} /></CloseButton>
       </ChatHeader>
       <MessagesContainer>
         {messages.map((msg, index) => (
           <Message key={index} $isUser={msg.isUser}>
-            <MessageBubble $isUser={msg.isUser}>{msg.text}</MessageBubble>
+            { !msg.isUser && isJsonString(msg.text) ? (
+                <SmartSwaps data={JSON.parse(msg.text)} />
+              ) : (
+                <MessageBubble $isUser={msg.isUser}>{msg.text}</MessageBubble>
+              )
+            }
           </Message>
         ))}
         {isLoading && <Message $isUser={false}><MessageBubble $isUser={false}>...</MessageBubble></Message>}
         <div ref={messagesEndRef} />
       </MessagesContainer>
-      <InputContainer>
+      <InputContainer onSubmit={handleSend}>
         <ChatInput
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
           placeholder="Ask me anything..."
           disabled={isLoading}
         />
-        <SendButton onClick={handleSend} disabled={isLoading}><Send /></SendButton>
+        <SendButton type="submit" disabled={isLoading || !input.trim()}><Send /></SendButton>
       </InputContainer>
     </ChatContainer>
   );
 };
 
 export default Chatbot;
+
+
