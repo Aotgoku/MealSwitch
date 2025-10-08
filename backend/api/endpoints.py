@@ -9,6 +9,7 @@ import traceback
 import json
 import re
 import asyncio
+from backend.services import usda_service
 
 # Create a logger and a router for this file
 logger = logging.getLogger(__name__)
@@ -42,38 +43,93 @@ def health_check():
     }
 
 
+# In backend/api/endpoints.py
+
 @router.post("/nutrition-analysis")
-def nutrition_analysis(request: NutritionAnalysisRequest):
-    """Analyze nutrition for a specific food item"""
-    logger.info(f"📡 /nutrition-analysis called with: {request.dict()}")
+async def nutrition_analysis(request: NutritionAnalysisRequest):
+    """
+    Analyzes nutrition using the full hybrid model with AI-powered portion parsing.
+    """
+
+     # --- START OF DIAGNOSTIC ---
+    print("\n--- NEW REQUEST RECEIVED ---")
+    print(f"--- 1. RAW INPUT: food='{request.food_name}', portion='{request.portion_text}' ---")
+    # --- END OF DIAGNOSTIC ---
+
+    logger.info(f"📡 /nutrition-analysis (AI Parse) called with: {request.dict()}")
+
+    # --- Step 1: Use Gemini to parse the user's text into grams ---
+    if not nutrition_service.model:
+        raise HTTPException(status_code=500, detail="Gemini model not configured.")
+
     try:
-        result = nutrition_service.get_food_info(request.food_name)
-        if result is None:
-            raise HTTPException(status_code=404, detail=f"Could not find nutrition information for '{request.food_name}'")
+        parse_prompt = f"""
+        Analyze the user's food entry. Extract the food name and estimate the total weight in grams.
+        User Input Food: "{request.food_name}"
+        User Input Portion: "{request.portion_text}"
 
-        portion = request.portion_size
-        nutrition_data = {
-            "food_name": result.get('food_name'),
-            "portion_size": portion,
-            "nutrition": {
-                "calories": float(result.get('calories', 0)) * portion,
-                "sugar_g": float(result.get('sugar_g', 0)) * portion,
-                "fat_g": float(result.get('fat_g', 0)) * portion,
-                "carbs_g": float(result.get('carbs_g', 0)) * portion,
-                "protein_g": float(result.get('protein_g', 0)) * portion,
-            },
-            "health_info": {
-                "calories_saved": float(result.get('calories_saved', 0)) * portion,
-                "risky_for": result.get('risky_for', 'None'),
-                "category": result.get('category', 'Unknown')
-            }
-        }
-        logger.info(f"✅ Nutrition analysis successful for: {result.get('food_name')}")
-        return {"status": "ok", "result": nutrition_data}
+        Your response MUST be ONLY a JSON object with this exact structure:
+        {{"food_name": "best guess food name", "estimated_grams": <estimated weight in grams as a number>}}
+        """
+        response = await asyncio.to_thread(nutrition_service.model.generate_content, parse_prompt)
+        
+        json_start_index = response.text.find('{')
+        json_end_index = response.text.rfind('}') + 1
+        clean_json_string = response.text[json_start_index:json_end_index]
+        parsed_data = json.loads(clean_json_string)
+
+        food_name = parsed_data.get("food_name")
+        portion_grams = float(parsed_data.get("estimated_grams", 100))
+        
+        logger.info(f"🤖 AI Parsed Request: Food='{food_name}', Grams={portion_grams}")
+
     except Exception as e:
-        logger.error(f"❌ Error in nutrition analysis: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"❌ AI parsing failed: {e}. Falling back to defaults.")
+        food_name = request.food_name
+        try:
+            portion_grams = float("".join(c for c in request.portion_text if c.isdigit() or c == '.'))
+            if portion_grams == 0: portion_grams = 100.0
+        except (ValueError, AttributeError):
+            portion_grams = 100.0
 
+    # --- Step 2: Use the parsed food name to get nutrition (Your Hybrid Logic) ---
+    usda_result = await usda_service.search_food_nutrition(food_name)
+    local_result = nutrition_service.get_food_info(food_name)
+
+    if not usda_result and not local_result:
+        raise HTTPException(status_code=404, detail=f"Could not find nutrition info for '{food_name}'.")
+
+    base_nutrition = usda_result if usda_result else {
+        "food_name": local_result.get('food_name'), "calories": local_result.get('calories', 0),
+        "protein_g": local_result.get('protein_g', 0), "carbs_g": local_result.get('carbs_g', 0),
+        "fat_g": local_result.get('fat_g', 0), "sugar_g": local_result.get('sugar_g', 0),
+        "fiber_g": "N/A"
+    }
+
+    # --- Step 3: Scale the nutrition to the parsed portion size ---
+    scaling_factor = portion_grams / 100.0
+    scaled_nutrition = {
+        "food_name": base_nutrition.get("food_name"),
+        "portion_description": f"{round(portion_grams)}g (from '{request.portion_text}')",
+        "calories": round(float(base_nutrition.get('calories', 0)) * scaling_factor),
+        "protein_g": round(float(base_nutrition.get('protein_g', 0)) * scaling_factor, 1),
+        "carbs_g": round(float(base_nutrition.get('carbs_g', 0)) * scaling_factor, 1),
+        "fat_g": round(float(base_nutrition.get('fat_g', 0)) * scaling_factor, 1),
+        "sugar_g": round(float(base_nutrition.get('sugar_g', 0)) * scaling_factor, 1),
+        "fiber_g": "N/A" if base_nutrition.get('fiber_g') == "N/A" else round(float(base_nutrition.get('fiber_g', 0)) * scaling_factor, 1),
+    }
+    
+    # --- Step 4: Check for an expert swap suggestion (Your existing logic) ---
+    expert_suggestion = nutrition_service.find_optimized_suggestion(food_name)
+    
+    # --- Step 5: Combine and return the results ---
+    # THE ONLY CHANGE IS ON THE NEXT LINE
+    final_result = {
+        "nutrition": scaled_nutrition, # <-- This now correctly uses the scaled data
+        "expert_suggestion": expert_suggestion,
+    }
+
+    return {"status": "ok", "result": final_result}
 
 @router.post("/food-recommendations")
 def food_recommendations(request: QueryRequest):
@@ -258,48 +314,88 @@ async def chat_with_gemini(request: ChatRequest):
 @router.post("/generate-meal-plan")
 async def generate_meal_plan(request: MealPlanRequest):
     """Generates a daily meal plan using the Gemini API."""
-    logger.info(f"📡 /generate-meal-plan called with goal: {request.goal}, calories: {request.calories}")
+    logger.info(f"📡 /generate-meal-plan called with details: {request.dict()}")
     if not nutrition_service.model:
         raise HTTPException(status_code=500, detail="Gemini model not configured.")
 
+    # --- Calorie and BMI logic (This is all correct and stays the same) ---
+    tdee = nutrition_service.calculate_tdee(
+        age=request.age,
+        weight_kg=request.weight_kg,
+        height_cm=request.height_cm,
+        gender=request.gender,
+        activity_level=request.activity_level
+    )
+    if request.goal == 'weight_loss':
+        target_calories = tdee - 400
+    elif request.goal == 'muscle_gain':
+        target_calories = tdee + 400
+    else:
+        target_calories = tdee
+    logger.info(f"✅ Calculated TDEE: {tdee}, Final Target Calories for {request.goal}: {target_calories}")
+    
+    bmi, bmi_category = nutrition_service.calculate_bmi(
+        weight_kg=request.weight_kg,
+        height_cm=request.height_cm
+    )
+    logger.info(f"✅ Calculated BMI: {bmi} ({bmi_category})")
+    
+  # --- START OF THE FIX: A More Detailed Prompt ---
     prompt = f"""
-    Act as an elite sports nutritionist and expert chef... 
-    (The rest of your prompt is here)
-    ...
+    Act as an expert nutritionist. Your task is to generate a simple, healthy, and delicious daily meal plan for a user with the following details:
+    - Goal: {request.goal.replace('_', ' ')}
+    - Age: {request.age}
+    - Weight: {request.weight_kg} kg
+    - Height: {request.height_cm} cm
+    - Gender: {request.gender}
+    - Activity Level: {request.activity_level}
+    - Target Calories: Approximately {target_calories} calories.
+    - Dietary Preference: {request.dietary_preference}
+    - Preferred Cuisine: {request.cuisine}
+
+    **Instructions:**
+    1.  Create a meal plan with three meals: Breakfast, Lunch, and Dinner.
+    2.  **CRITICAL: All suggested meals MUST strictly adhere to the user's Dietary Preference.**
+    3.  For each meal, you MUST provide a specific "name" (e.g., "Masala Oats" or "Grilled Chicken Salad").
+    4.  For each meal, you MUST provide a short "description" (1-2 sentences).
+    5.  Estimate the "calories" for each meal. The total for all three meals should be close to the user's target.
+
+    **CRITICAL:** Your final output MUST be ONLY a single, valid JSON object. Do not include any text, explanations, or markdown formatting before or after the JSON.
     The JSON object must follow this exact structure:
-    {{"plan": {{"breakfast": {{"name": "Meal Name", "description": "...", "calories": <number>}}, "lunch": {{...}}, "dinner": {{...}}}}, "totalCalories": <number>, "reason": "..."}}
+    {{"plan": {{"breakfast": {{"name": "Specific Meal Name", "description": "...", "calories": <number>}}, "lunch": {{"name": "Specific Meal Name", "description": "...", "calories": <number>}}, "dinner": {{"name": "Specific Meal Name", "description": "...", "calories": <number>}}}}, "totalCalories": <number>, "reason": "..."}}
     """
+    # --- END OF THE FIX ---
 
     try:
         response = await asyncio.to_thread(nutrition_service.model.generate_content, prompt)
         
-        # --- START OF THE FIX ---
-        # Find the start and end of the JSON block in the AI's response text
+        # All of your existing JSON cleaning and return logic is correct and stays the same
         json_start_index = response.text.find('{')
         json_end_index = response.text.rfind('}') + 1
-        
         if json_start_index == -1 or json_end_index == 0:
-            logger.error(f"❌ Could not find a JSON object in the AI response: {response.text}")
-            raise HTTPException(status_code=500, detail="The AI response did not contain a valid JSON object.")
-
-        # Extract just the JSON part of the string
+            raise ValueError("Could not find a JSON object in the AI response.")
         clean_json_string = response.text[json_start_index:json_end_index]
-        
-        # Now, parse the clean string
         plan_data = json.loads(clean_json_string)
-        # --- END OF THE FIX ---
         
         logger.info("✅ Gemini meal plan generated and parsed successfully.")
-        return {"status": "ok", "plan_data": plan_data}
-
-    except json.JSONDecodeError as e:
-        logger.error(f"❌ JSON DECODE ERROR. AI Response was: {response.text}")
+        
+        return {
+            "status": "ok", 
+            "plan_data": plan_data,
+            "user_stats": {
+                "bmi": bmi,
+                "bmi_category": bmi_category,
+                "target_calories": target_calories
+            }
+        }
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.error(f"❌ JSON DECODE ERROR. AI Response was: {getattr(response, 'text', 'No response text available')}")
         raise HTTPException(status_code=500, detail="The AI returned a malformed JSON response.")
     except Exception as e:
         logger.error(f"❌ An unexpected error occurred in meal plan generation: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail="An internal error occurred while generating the meal plan.")
-
+    
 @router.post("/optimize-plan")
 def optimize_meal_plan(request: MealPlanOptimizeRequest):
     """Receives a meal plan and adds MealSwitch optimization suggestions."""

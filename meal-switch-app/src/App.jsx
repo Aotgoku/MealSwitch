@@ -60,15 +60,21 @@ const App = () => {
     const [mealPlanData, setMealPlanData] = useState(null);
     const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
     const [showMealPlanForm, setShowMealPlanForm] = useState(false);
-    const [mealPlanDetails, setMealPlanDetails] = useState({
-        age: '',
-        weight: '',
-        height: '',
-        gender: 'male',
-        targetCalories: 2000,
-    });
+ const [mealPlanDetails, setMealPlanDetails] = useState({
+    age: '',
+    weight: '',
+    height: '',
+    gender: 'male',
+    activityLevel: 'sedentary',
+    dietaryPreference: 'veg', // New field with a default
+});
     const [optimizedPlanData, setOptimizedPlanData] = useState(null);
     const [proactiveMessage, setProactiveMessage] = useState('');
+    // In src/App.jsx
+// Add this new state variable with your others
+const [userStats, setUserStats] = useState(null);
+// In src/App.jsx
+const [portionSize, setPortionSize] = useState(100); // Default to 100g
 
 
     const mountRef = useRef(null);
@@ -581,42 +587,41 @@ const App = () => {
     // API call function
 
 
+const handleAnalyze = useCallback(async () => {
+    if (!foodInput.trim() && !selectedImage) return;
 
+    setIsAnalyzing(true);
+    setError(null);
 
-    const handleAnalyze = useCallback(async () => {
-        if (!foodInput.trim() && !selectedImage) return;
+    try {
+        // For now, we'll use the text input. Image analysis would require additional backend processing
+        const query = foodInput.trim() || 'uploaded image food';
 
-        setIsAnalyzing(true);
-        setError(null);
+        // --- THIS IS THE FIX ---
+        // Pass the portionSize state to your API call function
+        const nutritionData = await callNutritionAPI(query, portionSize);
+        // --- END OF FIX ---
 
-        try {
-            // For now, we'll use the text input. Image analysis would require additional backend processing
-            const query = foodInput.trim() || 'uploaded image food';
+        // Get recommendations
+        const recommendationsData = await getRecommendations(query);
 
-            // Get nutrition analysis
-            const nutritionData = await callNutritionAPI(query);
+        const result = {
+            nutrition: nutritionData,
+            recommendations: recommendationsData,
+            query: query,
+            timestamp: new Date().toISOString()
+        };
 
-            // Get recommendations
-            const recommendationsData = await getRecommendations(query);
+        setAnalysisResult(result);
+        setShowResults(true);
 
-            const result = {
-                nutrition: nutritionData,
-                recommendations: recommendationsData,
-                query: query,
-                timestamp: new Date().toISOString()
-            };
-
-            setAnalysisResult(result);
-            setShowResults(true);
-
-        } catch (error) {
-            console.error('Analysis failed:', error);
-            setError('Failed to analyze food. Please check if the backend server is running on http://127.0.0.1:8000');
-        } finally {
-            setIsAnalyzing(false);
-        }
-    }, [foodInput, selectedImage]);
-
+    } catch (error) {
+        console.error('Analysis failed:', error);
+        setError('Failed to analyze food. Please check if the backend server is running on http://127.0.0.1:8000');
+    } finally {
+        setIsAnalyzing(false);
+    }
+}, [foodInput, selectedImage, portionSize]); // <-- Add portionSize to the dependency array
     const handleImageUpload = useCallback((event) => {
         const file = event.target.files[0];
         if (file) {
@@ -627,42 +632,69 @@ const App = () => {
     }, []);
 
 
-    const handleGeneratePlan = async () => {
-        if (!userGoal) {
-            alert("Please select a goal first!");
-            return;
-        }
-        setIsGeneratingPlan(true);
-        setShowMealPlanForm(false); // Close the form while generating
+   // In src/App.jsx
+// In src/App.jsx
 
-        try {
-            const response = await fetch('http://127.0.0.1:8000/generate-meal-plan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    goal: userGoal,
-                    calories: parseInt(mealPlanDetails.targetCalories, 10),
-                    age: mealPlanDetails.age ? parseInt(mealPlanDetails.age, 10) : null,
-                    weight_kg: mealPlanDetails.weight ? parseFloat(mealPlanDetails.weight) : null,
-                    height_cm: mealPlanDetails.height ? parseFloat(mealPlanDetails.height) : null,
-                    gender: mealPlanDetails.gender
-                })
-            });
-            const data = await response.json();
-            if (data.status === 'ok') {
-                setMealPlanData(data.plan_data);
-                setShowMealPlan(true);
-            } else {
-                throw new Error(data.error || "Failed to generate plan.");
-            }
-        } catch (error) {
-            console.error("Error generating meal plan:", error);
-            alert("Sorry, there was an error generating your meal plan.");
-        } finally {
-            setIsGeneratingPlan(false);
-        }
-    };
+// In src/App.jsx
 
+// In src/App.jsx
+
+// In src/App.jsx
+
+const handleGeneratePlan = async () => {
+    if (!userGoal) {
+      alert("Please select a goal first!");
+      return;
+    }
+
+    const age = parseInt(mealPlanDetails.age, 10);
+    const weight = parseFloat(mealPlanDetails.weight);
+    const height = parseFloat(mealPlanDetails.height);
+
+    if (isNaN(age) || isNaN(weight) || isNaN(height) || age <= 0 || weight <= 0 || height <= 0) {
+        alert("Please fill in a valid age, weight, and height.");
+        return;
+    }
+
+    setIsGeneratingPlan(true);
+    setShowMealPlanForm(false);
+    
+    // Declaring these here fixes the "not defined" error
+    let response;
+    let data;
+
+    try {
+        response = await fetch('http://127.0.0.1:8000/generate-meal-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                goal: userGoal,
+                age: age,
+                weight_kg: weight,
+                height_cm: height,
+                gender: mealPlanDetails.gender,
+                activity_level: mealPlanDetails.activityLevel,
+                 dietary_preference: mealPlanDetails.dietaryPreference, 
+            })
+        });
+        
+        data = await response.json();
+
+        if (response.ok) {
+           setMealPlanData(data.plan_data);
+           setUserStats(data.user_stats); // This correctly saves the BMI info
+           setShowMealPlan(true);
+        } else {
+           const errorMessage = data.detail[0]?.msg || data.detail || "Failed to generate plan.";
+           throw new Error(errorMessage);
+        }
+    } catch (error) {
+        console.error("Error generating meal plan:", error);
+        alert(`Sorry, an error occurred: ${error.message}`);
+    } finally {
+        setIsGeneratingPlan(false);
+    }
+};
     const handleOptimizePlan = async () => {
         if (!mealPlanData) return;
         setIsGeneratingPlan(true); // We can reuse the same loading state
@@ -738,20 +770,21 @@ const App = () => {
 
     return (
         <div className="app-container">
-            {/* Your Modals and Popups */}
-            {showMealPlanForm && <MealPlanForm onGenerate={handleGeneratePlan} onClose={() => setShowMealPlanForm(false)} isGenerating={isGeneratingPlan} details={mealPlanDetails} setDetails={setMealPlanDetails} />}
-            {showMealPlan && (
-                <MealPlan
-                    planData={mealPlanData}
-                    optimizedPlanData={optimizedPlanData}
-                    onClose={() => {
-                        setShowMealPlan(false);
-                        setOptimizedPlanData(null);
-                    }}
-                    onOptimize={handleOptimizePlan}
-                    isOptimizing={isGeneratingPlan}
-                />
-            )}
+           {/* Your Modals and Popups */}
+  {showMealPlanForm && <MealPlanForm onGenerate={handleGeneratePlan} onClose={() => setShowMealPlanForm(false)} isGenerating={isGeneratingPlan} details={mealPlanDetails} setDetails={setMealPlanDetails} />}
+  {showMealPlan && (
+      <MealPlan
+          planData={mealPlanData}
+          userStats={userStats}
+          optimizedPlanData={optimizedPlanData}
+          onClose={() => {
+              setShowMealPlan(false);
+              setOptimizedPlanData(null);
+          }}
+          onOptimize={handleOptimizePlan}
+          isOptimizing={isGeneratingPlan}
+      />
+  )}
             {showGoalModal && <GoalModal onGoalSelect={handleGoalSelection} />}
            {userGoal && showChatbot && (
                 <Chatbot

@@ -1,21 +1,30 @@
-// src/services/api.js
-
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
 // A helper to make our code cleaner
 const handleResponse = async (response) => {
     if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+        // Extract the more detailed message from FastAPI if it exists
+        const errorMsg = error.detail[0]?.msg || error.detail || `HTTP error! status: ${response.status}`;
+        throw new Error(errorMsg);
     }
     return response.json();
 };
 
-export const callNutritionAPI = (foodQuery) => {
+// --- THIS IS THE UPDATED FUNCTION ---
+// In src/services/api.js
+
+export const callNutritionAPI = (foodQuery, portionText) => {
     return fetch(`${API_BASE_URL}/nutrition-analysis`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ food_name: foodQuery, portion_size: 1.0 })
+        body: JSON.stringify({ 
+            food_name: foodQuery, 
+            // --- THIS IS THE FIX ---
+            // Ensure the portion is always sent as a string
+            portion_text: String(portionText) 
+            // --- END OF FIX ---
+        })
     }).then(handleResponse);
 };
 

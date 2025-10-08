@@ -23,12 +23,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE_PATH = os.path.join(BASE_DIR, '..', 'data', 'MealSwitch_dataset.xlsx')
 
 # ========================
-# Load your dataset (This section is unchanged)
+# Load your dataset
 # ========================
 try:
     logger.info(f"📂 Loading dataset from {DATA_FILE_PATH} ...")
     df = pd.read_excel(DATA_FILE_PATH)
-    # ... (the rest of your data loading logic remains the same)
     df.columns = df.columns.str.strip()
     df = df.drop_duplicates()
     df['risky_for'] = df['risky_for'].fillna("None")
@@ -43,7 +42,7 @@ except Exception as e:
     logger.info("✅ Using fallback dataset")
 
 # ========================
-# Build TF-IDF model (This section is unchanged)
+# Build TF-IDF model
 # ========================
 try:
     logger.info("⚙️ Building TF-IDF model...")
@@ -54,10 +53,8 @@ except Exception as e:
     logger.error(f"❌ Error building TF-IDF model: {e}")
 
 # ========================
-# Helper Functions (This section is unchanged)
+# Helper Functions
 # ========================
-# All your helper functions like get_food_info, find_optimized_suggestion, etc.
-# remain exactly the same.
 def get_food_info(query: str, top_n: int = 1):
     logger.info(f"🔎 [get_food_info] Query received: {query}")
     if vectorizer is None or X is None:
@@ -115,7 +112,49 @@ def get_alternative_suggestions(food_name: str):
     except Exception as e:
         logger.error(f"Error getting alternatives: {e}")
         return []
+
+def calculate_tdee(age: int, weight_kg: float, height_cm: float, gender: str, activity_level: str) -> int:
+    """Calculates Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE)."""
+    if gender.lower() == 'male':
+        bmr = (10 * weight_kg) + (6.25 * height_cm) - (5 * age) + 5
+    else:  # Assumes female
+        bmr = (10 * weight_kg) + (6.25 * height_cm) - (5 * age) - 161
+
+    activity_multipliers = {
+        "sedentary": 1.2,
+        "light": 1.375,
+        "moderate": 1.55,
+        "active": 1.725
+    }
     
+    tdee = bmr * activity_multipliers.get(activity_level.lower(), 1.2)
+    return int(tdee)
+
+def calculate_bmi(weight_kg: float, height_cm: float) -> tuple[float, str]:
+    """Calculates BMI and provides a category."""
+    if not weight_kg or not height_cm or height_cm <= 0 or weight_kg <= 0:
+        return 0.0, "Invalid Input"
+    
+    try:
+        height_m = height_cm / 100
+        bmi = round(weight_kg / (height_m * height_m), 1)
+        
+        if bmi < 18.5:
+            category = "Underweight"
+        elif 18.5 <= bmi < 24.9:
+            category = "Healthy Weight"
+        elif 25 <= bmi < 29.9:
+            category = "Overweight"
+        else:
+            category = "Obesity"
+            
+        return bmi, category
+        
+    except ZeroDivisionError:
+        return 0.0, "Invalid Height"
+
+# --- INDENTATION FIX ---
+# This function is now correctly aligned with the other functions
 def find_optimized_suggestion(food_name: str):
     if vectorizer is None or X is None or df.empty:
         return None

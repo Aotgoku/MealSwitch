@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { X, Zap } from 'lucide-react';
 
+// --- YOUR STYLES (UNCHANGED) ---
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -13,7 +14,7 @@ const ModalOverlay = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1001; /* Higher z-index to appear over the chatbot */
+  z-index: 1001;
 `;
 
 const FormContainer = styled.div`
@@ -40,7 +41,7 @@ const CloseButton = styled.button`
 
 const InputGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr; /* Two equal columns */
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
   margin-bottom: 1.5rem;
 `;
@@ -123,8 +124,10 @@ const Spinner = styled.div`
   }
 `;
 
+// --- NEW COMPONENT LOGIC ---
 const MealPlanForm = ({ onGenerate, onClose, isGenerating, details, setDetails }) => {
-  const { age, weight, height, gender, targetCalories } = details;
+  // 1. Destructure 'activityLevel', remove 'targetCalories'
+  const { age, weight, height, gender, activityLevel } = details;
 
   const handleChange = (e) => {
     setDetails({ ...details, [e.target.id]: e.target.value });
@@ -161,11 +164,26 @@ const MealPlanForm = ({ onGenerate, onClose, isGenerating, details, setDetails }
           </InputWrapper>
         </InputGrid>
         
-        <Label htmlFor="targetCalories">Target Daily Calories</Label>
-        <Input id="targetCalories" type="number" value={targetCalories} onChange={handleChange} style={{ marginBottom: '1.5rem' }} />
-
+        {/* 2. The 'targetCalories' input is REMOVED and replaced with 'activityLevel' */}
+        <Label htmlFor="activityLevel">Weekly Activity Level</Label>
+        <Select id="activityLevel" value={activityLevel} onChange={handleChange} style={{ marginBottom: '1.5rem' }}>
+            <option value="sedentary">Sedentary (little or no exercise)</option>
+            <option value="light">Lightly Active (exercise 1-3 days/week)</option>
+            <option value="moderate">Moderately Active (exercise 3-5 days/week)</option>
+            <option value="active">Very Active (exercise 6-7 days a week)</option>
+        </Select>
+        
+         {/* --- ADD THIS NEW DROPDOWN --- */}
+        <label htmlFor="dietaryPreference">Dietary Preference</label>
+        <select id="dietaryPreference" value={details.dietaryPreference} onChange={handleChange} style={{ marginBottom: '1.5rem' }}>
+            <option value="veg">Vegetarian</option>
+            <option value="non-veg">Non-Vegetarian</option>
+            <option value="any">Any</option>
+        </select>
+        {/* --- END OF NEW DROPDOWN --- */}
+        
         <GenerateButton onClick={onGenerate} disabled={isGenerating}>
-          {isGenerating ? <Spinner /> : '✨ Generate My AI Plan'}
+          {isGenerating ? <Spinner /> : <>✨ Generate My AI Plan</>}
         </GenerateButton>
       </FormContainer>
     </ModalOverlay>

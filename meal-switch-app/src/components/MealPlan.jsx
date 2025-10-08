@@ -2,8 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { X, Flame, Utensils, Sun, Moon, Zap, Sparkles } from 'lucide-react';
 
-// --- CSS FIXES ARE IN THIS SECTION ---
-
+// --- Your existing styles (unchanged) ---
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -16,7 +15,6 @@ const ModalOverlay = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  /* This allows the overlay to scroll if the window is very short */
   overflow-y: auto; 
   padding: 2rem 0;
 `;
@@ -30,11 +28,8 @@ const PlanContainer = styled.div`
   border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
   color: #f2f2f2;
-  /* This ensures the modal doesn't get stuck to the top/bottom */
   margin: auto; 
 `;
-
-// --- The rest of the file is unchanged ---
 
 const CloseButton = styled.button`
   position: absolute;
@@ -100,7 +95,8 @@ const Spinner = styled.div`
   @keyframes spin { to { transform: rotate(360deg); } }
 `;
 
-const MealPlan = ({ planData, optimizedPlanData, onClose, onOptimize, isOptimizing }) => {
+// --- Updated Component Logic ---
+const MealPlan = ({ planData, optimizedPlanData, userStats, onClose, onOptimize, isOptimizing }) => {
   const displayData = optimizedPlanData || planData;
   if (!displayData || !displayData.plan) return null;
 
@@ -126,13 +122,24 @@ const MealPlan = ({ planData, optimizedPlanData, onClose, onOptimize, isOptimizi
       <PlanContainer>
         <CloseButton onClick={onClose}><X /></CloseButton>
         <h2 style={{ textAlign: 'center', marginTop: 0 }}>Your Personalized Meal Plan</h2>
-        <p style={{ textAlign: 'center', color: '#a8a29e' }}>Total Estimated Calories: {totalCalories}</p>
+        {/* Updated to use target_calories from userStats if available */}
+        <p style={{ textAlign: 'center', color: '#a8a29e' }}>Target: {userStats?.target_calories || totalCalories} kcal</p>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', margin: '2rem 0' }}>
             <Meal mealType="Breakfast" meal={plan.breakfast} icon={<Sun size={20} />} />
             <Meal mealType="Lunch" meal={plan.lunch} icon={<Utensils size={20} />} />
             <Meal mealType="Dinner" meal={plan.dinner} icon={<Moon size={20} />} />
         </div>
+
+        {/* --- THIS IS THE NEW BMI SECTION --- */}
+        {userStats && (
+            <div style={{ textAlign: 'center', margin: '2rem 0', padding: '1rem', background: '#292524', borderRadius: '8px' }}>
+                <p style={{ margin: 0, color: '#a8a29e' }}>Your Calculated BMI is</p>
+                <h3 style={{ margin: '0.25rem 0', fontSize: '2rem' }}>{userStats.bmi}</h3>
+                <p style={{ margin: 0, color: '#f97316', fontWeight: 'bold' }}>{userStats.bmi_category}</p>
+            </div>
+        )}
+        {/* --- END OF NEW SECTION --- */}
 
         <div style={{ background: 'rgba(249, 115, 22, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid #f97316', marginBottom: '1rem' }}>
           <strong>Nutritionist's Note:</strong> {reason}
@@ -150,4 +157,3 @@ const MealPlan = ({ planData, optimizedPlanData, onClose, onOptimize, isOptimizi
 };
 
 export default MealPlan;
-
