@@ -13,7 +13,7 @@ class FoodDataRequest(BaseModel):
 class NutritionAnalysisRequest(BaseModel):
     food_name: str
     portion_text: str # This accepts any text like "150g" or "2 bowls"
-    
+
 class ImageAnalysisRequest(BaseModel):
     image_data: str  # Base64 encoded image
     portion_size: Optional[float] = 1.0
@@ -54,6 +54,9 @@ class MealPlanRequest(BaseModel):
 
 class MealPlanOptimizeRequest(BaseModel):
      plan: dict # It expects to receive the JSON plan from the frontend
+
+class ShoppingListRequest(BaseModel):
+    plan_text: str
 
     
 # ========================

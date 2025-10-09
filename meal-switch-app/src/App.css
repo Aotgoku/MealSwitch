@@ -135,6 +135,35 @@ body {
   box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
 }
 
+/* Prevent body from scrolling when a modal is open */
+.no-scroll {
+  overflow: hidden !important;
+  touch-action: none;
+}
+
+/* Modal overlay tweaks to ensure the modal centers and the page doesn't scroll behind it */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  z-index: 1000;
+}
+
+/* On small screens, make modal feel like a full-screen sheet */
+@media (max-width: 640px) {
+  .modal-fullscreen {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0.75rem !important;
+  }
+}
+
 /* --- Rest of the Styles --- */
 .section-title {
   font-size: 2.5rem;
@@ -2087,4 +2116,10 @@ body {
   .recommendations-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* In src/App.css */
+
+.no-scroll {
+  overflow: hidden;
 }

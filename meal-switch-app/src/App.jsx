@@ -19,6 +19,7 @@ import './App.css';
 import MacroCard from './components/MacroCard';
 import ErrorDisplay from './components/ErrorDisplay';
 import { callNutritionAPI, getRecommendations, generateMealPlanAPI, optimizeMealPlanAPI } from './services/api';
+import ShoppingList from './components/ShoppingList'; // <-- ADD THIS IMPORT
 
 const OpenChatbotButton = styled.button`
   position: fixed;
@@ -75,6 +76,8 @@ const App = () => {
 const [userStats, setUserStats] = useState(null);
 // In src/App.jsx
 const [portionSize, setPortionSize] = useState(100); // Default to 100g
+const [showShoppingList, setShowShoppingList] = useState(false);
+const [shoppingListData, setShoppingListData] = useState(null);
 
 
     const mountRef = useRef(null);
@@ -584,6 +587,24 @@ const [portionSize, setPortionSize] = useState(100); // Default to 100g
         }
     }, [optimizedPlanData]); // <-- This dependency array makes the hook run ONLY when optimizedPlanData gets a new value.
 
+    // In src/App.jsx
+
+// This hook will control the background scrolling
+useEffect(() => {
+    if (showShoppingList) {
+        // When the shopping list is open, disable scrolling on the main page
+        document.body.classList.add('no-scroll');
+    } else {
+        // When it closes, re-enable scrolling
+        document.body.classList.remove('no-scroll');
+    }
+
+    // Cleanup function to ensure scrolling is re-enabled if the component unmounts
+    return () => {
+        document.body.classList.remove('no-scroll');
+    };
+}, [showShoppingList]); // This effect runs whenever 'showShoppingList' changes
+
     // API call function
 
 
@@ -728,6 +749,38 @@ const handleGeneratePlan = async () => {
         }
     };
 
+   // In src/App.jsx
+const handleGenerateShoppingList = async () => {
+    if (!mealPlanData) return;
+
+    const planText = `
+        Breakfast: ${mealPlanData.plan.breakfast.name} - ${mealPlanData.plan.breakfast.description}
+        Lunch: ${mealPlanData.plan.lunch.name} - ${mealPlanData.plan.lunch.description}
+        Dinner: ${mealPlanData.plan.dinner.name} - ${mealPlanData.plan.dinner.description}
+    `;
+
+    try {
+        const response = await fetch('http://127.0.0.1:8000/generate-shopping-list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan_text: planText })
+        });
+        const data = await response.json();
+
+        if (data.status === 'ok') {
+            // --- THIS IS THE FIX ---
+            // Save the data and show the new component
+            setShoppingListData(data.shopping_list);
+            setShowShoppingList(true);
+            // --- END OF FIX ---
+        } else {
+            throw new Error("Failed to get shopping list.");
+        }
+    } catch (error) {
+        console.error("Error creating shopping list:", error);
+        alert("Sorry, there was an error creating your shopping list.");
+    }
+};
     // Function to handle smooth scrolling
     const handleNavClick = (sectionId) => {
         document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
@@ -783,8 +836,13 @@ const handleGeneratePlan = async () => {
           }}
           onOptimize={handleOptimizePlan}
           isOptimizing={isGeneratingPlan}
+          onGenerateList={handleGenerateShoppingList} // <-- ADD THIS
       />
   )}
+
+   {/* This new component displays the shopping list after the button is clicked */}
+        {showShoppingList && <ShoppingList listData={shoppingListData} onClose={() => setShowShoppingList(false)} />}
+
             {showGoalModal && <GoalModal onGoalSelect={handleGoalSelection} />}
            {userGoal && showChatbot && (
                 <Chatbot

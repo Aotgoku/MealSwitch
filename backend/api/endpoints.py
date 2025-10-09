@@ -10,6 +10,8 @@ import json
 import re
 import asyncio
 from backend.services import usda_service
+# In backend/api/endpoints.py
+from backend.models.schemas import MealPlanRequest, ShoppingListRequest # Add ShoppingListRequest here
 
 # Create a logger and a router for this file
 logger = logging.getLogger(__name__)
@@ -409,3 +411,42 @@ def optimize_meal_plan(request: MealPlanOptimizeRequest):
                 if suggestion:
                     optimized_plan["plan"][meal_type]["suggestion"] = suggestion
     return {"status": "ok", "optimized_plan": optimized_plan}
+
+@router.post("/generate-shopping-list")
+async def generate_shopping_list(request: ShoppingListRequest):
+    logger.info("📡 /generate-shopping-list called")
+    if not nutrition_service.model:
+        raise HTTPException(status_code=500, detail="Gemini model not configured.")
+
+    try:
+        prompt = f"""
+        Analyze this meal plan and extract all the necessary ingredients to create a categorized shopping list.
+
+        Meal Plan:
+        ---
+        {request.plan_text}
+        ---
+
+        Instructions:
+        1.  List all unique ingredients from the breakfast, lunch, and dinner descriptions.
+        2.  Categorize the ingredients into logical groups like "Produce", "Protein", "Dairy & Eggs", "Pantry Staples", etc.
+        3.  Do not include quantities, just the names of the ingredients.
+
+        Your response MUST be ONLY a single, valid JSON object. Do not include any text before or after it.
+        The JSON object must follow this exact structure:
+        {{"shopping_list": [{{"category": "Category Name", "items": ["item1", "item2"]}}]}}
+        """
+        
+        response = await asyncio.to_thread(nutrition_service.model.generate_content, prompt)
+        
+        # Standard JSON cleaning logic
+        json_start_index = response.text.find('{')
+        json_end_index = response.text.rfind('}') + 1
+        clean_json_string = response.text[json_start_index:json_end_index]
+        shopping_list_data = json.loads(clean_json_string)
+
+        return {"status": "ok", "shopping_list": shopping_list_data.get("shopping_list", [])}
+
+    except Exception as e:
+        logger.error(f"❌ Error generating shopping list: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate shopping list.")
