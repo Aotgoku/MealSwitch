@@ -20,6 +20,7 @@ import MacroCard from './components/MacroCard';
 import ErrorDisplay from './components/ErrorDisplay';
 import { callNutritionAPI, getRecommendations, generateMealPlanAPI, optimizeMealPlanAPI } from './services/api';
 import ShoppingList from './components/ShoppingList'; // <-- ADD THIS IMPORT
+import RecipeModal from './components/RecipeModal'; // <-- ADD THIS
 
 const OpenChatbotButton = styled.button`
   position: fixed;
@@ -78,6 +79,11 @@ const [userStats, setUserStats] = useState(null);
 const [portionSize, setPortionSize] = useState(100); // Default to 100g
 const [showShoppingList, setShowShoppingList] = useState(false);
 const [shoppingListData, setShoppingListData] = useState(null);
+ // --- ADD THESE NEW STATE VARIABLES ---
+    const [showRecipeModal, setShowRecipeModal] = useState(false);
+    const [recipeData, setRecipeData] = useState(null);
+    const [isCreatingRecipe, setIsCreatingRecipe] = useState(false);
+    // --- END ---
 
 
     const mountRef = useRef(null);
@@ -781,6 +787,34 @@ const handleGenerateShoppingList = async () => {
         alert("Sorry, there was an error creating your shopping list.");
     }
 };
+
+// Place this with your other handler functions like handleGeneratePlan
+
+    const handleCreateRecipe = async (ingredients) => {
+        if (!ingredients.trim()) return;
+        setIsCreatingRecipe(true);
+        setRecipeData(null); // Clear previous recipe
+        try {
+            const response = await fetch('http://127.0.0.1:8000/create-recipe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ingredients: ingredients,
+                    dietary_preference: mealPlanDetails.dietaryPreference
+                })
+            });
+            const data = await response.json();
+            if (data.status === 'ok') {
+                setRecipeData(data.recipe);
+            } else { 
+                throw new Error(data.detail || "Failed to create recipe."); 
+            }
+        } catch (error) {
+            alert(`Sorry, there was an error creating your recipe: ${error.message}`);
+        } finally {
+            setIsCreatingRecipe(false);
+        }
+    };
     // Function to handle smooth scrolling
     const handleNavClick = (sectionId) => {
         document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
@@ -854,6 +888,21 @@ const handleGenerateShoppingList = async () => {
                 />
             )}
 
+              {/* --- ADD THIS NEW COMPONENT --- */}
+            {showRecipeModal && 
+                <RecipeModal 
+                    onClose={() => {
+                        setShowRecipeModal(false);
+                        setRecipeData(null); // Clear recipe when closing
+                    }}
+                    onCreate={handleCreateRecipe}
+                    isCreating={isCreatingRecipe}
+                    recipeData={recipeData}
+                />
+            }
+            {/* --- END --- */}
+
+
             {/* Your Floating Chatbot Button */}
             {userGoal && !showChatbot && (
                 <OpenChatbotButton
@@ -905,6 +954,7 @@ const handleGenerateShoppingList = async () => {
                     isAnalyzing={isAnalyzing}
                     handleAnalyze={handleAnalyze}
                     setShowMealPlanForm={setShowMealPlanForm}
+                    setShowRecipeModal={setShowRecipeModal} // <-- ADD THIS LINE
                 />
                 <Features featuresRef={featuresRef} isVisible={isVisible.features || false} />
                 <Demo demoRef={demoRef} />

@@ -1,5 +1,3 @@
-# backend/api/endpoints.py
-
 from fastapi import APIRouter, HTTPException
 from starlette.responses import JSONResponse
 from backend.models.schemas import *
@@ -10,8 +8,7 @@ import json
 import re
 import asyncio
 from backend.services import usda_service
-# In backend/api/endpoints.py
-from backend.models.schemas import MealPlanRequest, ShoppingListRequest # Add ShoppingListRequest here
+from backend.models.schemas import MealPlanRequest, ShoppingListRequest, RecipeRequest
 
 # Create a logger and a router for this file
 logger = logging.getLogger(__name__)
@@ -29,8 +26,8 @@ def root():
         "message": "MealSwitch API v3.0 is running!",
         "status": "healthy",
         "dataset_info": {
-            "total_foods": len(nutrition_service.df),
-            "columns": list(nutrition_service.df.columns)
+            "total_foods": len(nutrition_service.df) if nutrition_service.df is not None else 0,
+            "columns": list(nutrition_service.df.columns) if nutrition_service.df is not None else []
         }
     }
 
@@ -40,30 +37,20 @@ def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "dataset_loaded": len(nutrition_service.df) > 0,
+        "dataset_loaded": nutrition_service.df is not None and len(nutrition_service.df) > 0,
         "model_ready": nutrition_service.vectorizer is not None
     }
-
-
-# In backend/api/endpoints.py
 
 @router.post("/nutrition-analysis")
 async def nutrition_analysis(request: NutritionAnalysisRequest):
     """
     Analyzes nutrition using the full hybrid model with AI-powered portion parsing.
     """
-
-     # --- START OF DIAGNOSTIC ---
-    print("\n--- NEW REQUEST RECEIVED ---")
-    print(f"--- 1. RAW INPUT: food='{request.food_name}', portion='{request.portion_text}' ---")
-    # --- END OF DIAGNOSTIC ---
-
     logger.info(f"📡 /nutrition-analysis (AI Parse) called with: {request.dict()}")
 
-    # --- Step 1: Use Gemini to parse the user's text into grams ---
+    # Step 1: Use Gemini to parse the user's text into grams
     if not nutrition_service.model:
         raise HTTPException(status_code=500, detail="Gemini model not configured.")
-
     try:
         parse_prompt = f"""
         Analyze the user's food entry. Extract the food name and estimate the total weight in grams.
@@ -84,7 +71,6 @@ async def nutrition_analysis(request: NutritionAnalysisRequest):
         portion_grams = float(parsed_data.get("estimated_grams", 100))
         
         logger.info(f"🤖 AI Parsed Request: Food='{food_name}', Grams={portion_grams}")
-
     except Exception as e:
         logger.error(f"❌ AI parsing failed: {e}. Falling back to defaults.")
         food_name = request.food_name
@@ -94,7 +80,7 @@ async def nutrition_analysis(request: NutritionAnalysisRequest):
         except (ValueError, AttributeError):
             portion_grams = 100.0
 
-    # --- Step 2: Use the parsed food name to get nutrition (Your Hybrid Logic) ---
+    # Step 2: Use the parsed food name to get nutrition (Your Hybrid Logic)
     usda_result = await usda_service.search_food_nutrition(food_name)
     local_result = nutrition_service.get_food_info(food_name)
 
@@ -108,7 +94,7 @@ async def nutrition_analysis(request: NutritionAnalysisRequest):
         "fiber_g": "N/A"
     }
 
-    # --- Step 3: Scale the nutrition to the parsed portion size ---
+    # Step 3: Scale the nutrition to the parsed portion size
     scaling_factor = portion_grams / 100.0
     scaled_nutrition = {
         "food_name": base_nutrition.get("food_name"),
@@ -121,13 +107,12 @@ async def nutrition_analysis(request: NutritionAnalysisRequest):
         "fiber_g": "N/A" if base_nutrition.get('fiber_g') == "N/A" else round(float(base_nutrition.get('fiber_g', 0)) * scaling_factor, 1),
     }
     
-    # --- Step 4: Check for an expert swap suggestion (Your existing logic) ---
+    # Step 4: Check for an expert swap suggestion
     expert_suggestion = nutrition_service.find_optimized_suggestion(food_name)
     
-    # --- Step 5: Combine and return the results ---
-    # THE ONLY CHANGE IS ON THE NEXT LINE
+    # Step 5: Combine and return the results
     final_result = {
-        "nutrition": scaled_nutrition, # <-- This now correctly uses the scaled data
+        "nutrition": scaled_nutrition,
         "expert_suggestion": expert_suggestion,
     }
 
@@ -152,7 +137,6 @@ def food_recommendations(request: QueryRequest):
         logger.error(f"❌ Error in food recommendations: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.post("/food-alternatives")
 def food_alternatives(request: QueryRequest):
     """Get healthier alternatives for a food item"""
@@ -171,13 +155,11 @@ def food_alternatives(request: QueryRequest):
         logger.error(f"❌ Error getting alternatives: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.post("/image-analysis")
 def image_analysis(request: ImageAnalysisRequest):
     """Analyze nutrition from food image (placeholder for now)"""
     logger.info(f"📡 /image-analysis called")
     raise HTTPException(status_code=501, detail="Image analysis feature is not implemented.")
-
 
 @router.post("/bulk-food-data")
 def bulk_food_data(request: FoodDataRequest):
@@ -210,7 +192,6 @@ def bulk_food_data(request: FoodDataRequest):
         logger.error(f"❌ Error in bulk analysis: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/food-categories")
 def get_food_categories():
     """Get all available food categories"""
@@ -230,7 +211,6 @@ def get_food_categories():
     except Exception as e:
         logger.error(f"❌ Error getting categories: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/health-stats")
 def get_health_stats():
@@ -253,7 +233,6 @@ def get_health_stats():
         logger.error(f"❌ Error calculating health stats: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/search/{query}")
 def quick_search(query: str):
     """Quick search endpoint for autocomplete"""
@@ -267,14 +246,12 @@ def quick_search(query: str):
         logger.error(f"❌ Error in quick search: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.post("/chat")
 async def chat_with_gemini(request: ChatRequest):
     """Chat with the AI Health Assistant, now with tool-use capabilities."""
     logger.info(f"📡 /chat called with goal: {request.goal}")
     if not nutrition_service.model:
         raise HTTPException(status_code=500, detail="Gemini model not configured.")
-
     try:
         prompt = f"""You are 'MealSwitch', a friendly, expert AI health and nutrition assistant. The user's primary health goal is: "{request.goal.replace('_', ' ')}". Now, answer the user's question: \"{request.message}\""""
         
@@ -297,7 +274,6 @@ async def chat_with_gemini(request: ChatRequest):
                 )
                 candidate = response.candidates[0]
             else:
-                # If the function is not found in the service, break the loop
                 break
 
         logger.info("✅ Gemini final response generated successfully.")
@@ -308,11 +284,6 @@ async def chat_with_gemini(request: ChatRequest):
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error communicating with AI model: {str(e)}")
 
-
-# In backend/api/endpoints.py
-
-# In backend/api/endpoints.py
-
 @router.post("/generate-meal-plan")
 async def generate_meal_plan(request: MealPlanRequest):
     """Generates a daily meal plan using the Gemini API."""
@@ -320,7 +291,6 @@ async def generate_meal_plan(request: MealPlanRequest):
     if not nutrition_service.model:
         raise HTTPException(status_code=500, detail="Gemini model not configured.")
 
-    # --- Calorie and BMI logic (This is all correct and stays the same) ---
     tdee = nutrition_service.calculate_tdee(
         age=request.age,
         weight_kg=request.weight_kg,
@@ -342,7 +312,6 @@ async def generate_meal_plan(request: MealPlanRequest):
     )
     logger.info(f"✅ Calculated BMI: {bmi} ({bmi_category})")
     
-  # --- START OF THE FIX: A More Detailed Prompt ---
     prompt = f"""
     Act as an expert nutritionist. Your task is to generate a simple, healthy, and delicious daily meal plan for a user with the following details:
     - Goal: {request.goal.replace('_', ' ')}
@@ -366,12 +335,10 @@ async def generate_meal_plan(request: MealPlanRequest):
     The JSON object must follow this exact structure:
     {{"plan": {{"breakfast": {{"name": "Specific Meal Name", "description": "...", "calories": <number>}}, "lunch": {{"name": "Specific Meal Name", "description": "...", "calories": <number>}}, "dinner": {{"name": "Specific Meal Name", "description": "...", "calories": <number>}}}}, "totalCalories": <number>, "reason": "..."}}
     """
-    # --- END OF THE FIX ---
 
     try:
         response = await asyncio.to_thread(nutrition_service.model.generate_content, prompt)
         
-        # All of your existing JSON cleaning and return logic is correct and stays the same
         json_start_index = response.text.find('{')
         json_end_index = response.text.rfind('}') + 1
         if json_start_index == -1 or json_end_index == 0:
@@ -397,7 +364,7 @@ async def generate_meal_plan(request: MealPlanRequest):
         logger.error(f"❌ An unexpected error occurred in meal plan generation: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail="An internal error occurred while generating the meal plan.")
-    
+
 @router.post("/optimize-plan")
 def optimize_meal_plan(request: MealPlanOptimizeRequest):
     """Receives a meal plan and adds MealSwitch optimization suggestions."""
@@ -417,7 +384,6 @@ async def generate_shopping_list(request: ShoppingListRequest):
     logger.info("📡 /generate-shopping-list called")
     if not nutrition_service.model:
         raise HTTPException(status_code=500, detail="Gemini model not configured.")
-
     try:
         prompt = f"""
         Analyze this meal plan and extract all the necessary ingredients to create a categorized shopping list.
@@ -439,14 +405,46 @@ async def generate_shopping_list(request: ShoppingListRequest):
         
         response = await asyncio.to_thread(nutrition_service.model.generate_content, prompt)
         
-        # Standard JSON cleaning logic
         json_start_index = response.text.find('{')
         json_end_index = response.text.rfind('}') + 1
         clean_json_string = response.text[json_start_index:json_end_index]
         shopping_list_data = json.loads(clean_json_string)
 
         return {"status": "ok", "shopping_list": shopping_list_data.get("shopping_list", [])}
-
     except Exception as e:
         logger.error(f"❌ Error generating shopping list: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate shopping list.")
+
+# --- INDENTATION FIX ---
+# This function is now correctly aligned with the other functions
+@router.post("/create-recipe")
+async def create_recipe(request: RecipeRequest):
+    logger.info(f"📡 /create-recipe called with ingredients: {request.ingredients}")
+    if not nutrition_service.model:
+        raise HTTPException(status_code=500, detail="Gemini model not configured.")
+    try:
+        prompt = f"""
+        Act as a creative chef. Based on the ingredients provided, invent a delicious recipe.
+
+        Ingredients available: {request.ingredients}
+        User's Dietary Preference: {request.dietary_preference}
+
+        Instructions:
+        1.  Create a unique and appealing "recipe_name".
+        2.  Write a short, enticing "description".
+        3.  List the "ingredients" needed (you can add common pantry staples like oil, salt, pepper if needed).
+        4.  Provide clear, step-by-step "instructions".
+        5.  All parts of the recipe must adhere to the user's dietary preference.
+
+        Your response MUST be ONLY a single, valid JSON object with this exact structure:
+        {{"recipe": {{"recipe_name": "...", "description": "...", "ingredients": ["...", "..."], "instructions": ["Step 1...", "Step 2..."]}}}}
+        """
+        response = await asyncio.to_thread(nutrition_service.model.generate_content, prompt)
+        
+        json_str = response.text[response.text.find('{'):response.text.rfind('}')+1]
+        recipe_data = json.loads(json_str)
+
+        return {"status": "ok", "recipe": recipe_data.get("recipe")}
+    except Exception as e:
+        logger.error(f"❌ Error creating recipe: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create recipe.")

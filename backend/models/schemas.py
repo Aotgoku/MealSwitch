@@ -58,6 +58,10 @@ class MealPlanOptimizeRequest(BaseModel):
 class ShoppingListRequest(BaseModel):
     plan_text: str
 
+class RecipeRequest(BaseModel):
+    ingredients: str
+    dietary_preference: str    
+
     
 # ========================
 # Response Models

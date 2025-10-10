@@ -1,20 +1,21 @@
 import React from 'react';
-import { Camera, Upload, Zap, Sparkles, Brain, ArrowRight } from 'lucide-react';
+import { Camera, Upload, Zap, Sparkles, Brain, ArrowRight, ChefHat } from 'lucide-react'; // Added ChefHat icon
 
-const Hero = ({ 
-    heroRef, 
+const Hero = ({
+    heroRef,
     isVisible,
-    foodInput, 
-    setFoodInput, 
+    foodInput,
+    setFoodInput,
     portionSize,
     setPortionSize,
-    currentTab, 
-    setCurrentTab, 
-    selectedImage, 
-    handleImageUpload, 
-    isAnalyzing, 
+    currentTab,
+    setCurrentTab,
+    selectedImage,
+    handleImageUpload,
+    isAnalyzing,
     handleAnalyze,
-    setShowMealPlanForm
+    setShowMealPlanForm,
+    setShowRecipeModal // <-- This new prop is added
 }) => {
     return (
         <section id="hero" ref={heroRef} className="hero-section">
@@ -54,16 +55,14 @@ const Hero = ({
                                     <Sparkles className="input-field-icon" />
                                 </div>
                                 <div style={{ position: 'relative' }}>
-                                    {/* --- THIS IS THE MODIFIED INPUT FIELD --- */}
-                                    <input 
-                                        type="text" // Changed from "number" to "text"
-                                        value={portionSize} 
-                                        onChange={(e) => setPortionSize(e.target.value)} 
-                                        className="text-input" 
-                                        style={{ width: '140px' }} // Adjusted width
-                                        placeholder="e.g., 150g or 1 bowl" // Updated placeholder
+                                    <input
+                                        type="text"
+                                        value={portionSize}
+                                        onChange={(e) => setPortionSize(e.target.value)}
+                                        className="text-input"
+                                        style={{ width: '140px' }}
+                                        placeholder="e.g., 150g or 1 bowl"
                                     />
-                                    {/* The 'g' span is removed as it's no longer needed */}
                                 </div>
                             </div>
                             <div className="suggestions">
@@ -101,12 +100,19 @@ const Hero = ({
                 </div>
             </div>
 
-            <div style={{ marginTop: '2rem' }}>
+            {/* --- THIS IS THE MODIFIED SECTION --- */}
+            <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                 <button onClick={() => setShowMealPlanForm(true)} className="cta-button-primary">
                     <Zap />
                     <span>Generate Personalized AI Meal Plan</span>
                 </button>
+                <button onClick={() => setShowRecipeModal(true)} className="cta-button-secondary">
+                    <ChefHat />
+                    <span>Create AI Recipe</span>
+                </button>
             </div>
+            {/* --- END OF MODIFIED SECTION --- */}
+            
         </section>
     );
 };
