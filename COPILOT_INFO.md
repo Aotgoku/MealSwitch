@@ -58,7 +58,8 @@ Your GitHub Copilot Pro access through the Student Developer Pack is valid as lo
 ### Need Help?
 
 If you're unsure about your Copilot access or have issues:
-- Check your Student Developer Pack status at https://education.github.com/discount_requests/student_application
+- Check your Student Developer Pack status at https://education.github.com/benefits
+- Check your billing and subscriptions at https://github.com/settings/billing
 - Contact GitHub Education support at https://support.github.com/
 - Review the GitHub Copilot documentation at https://docs.github.com/copilot
 
