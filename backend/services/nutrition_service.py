@@ -30,6 +30,8 @@ try:
     df = pd.read_excel(DATA_FILE_PATH)
     df.columns = df.columns.str.strip()
     df = df.drop_duplicates()
+    if 'food_category' in df.columns and 'category' not in df.columns:
+        df['category'] = df['food_category']
     df['risky_for'] = df['risky_for'].fillna("None")
     numeric_cols = ['calories', 'calories_saved', 'sugar_g', 'fat_g', 'carbs_g', 'protein_g']
     for col in numeric_cols:

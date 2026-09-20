@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { Bot, Send, X } from 'lucide-react';
-import SmartSwaps from './SmartSwaps'; // Ensure this component exists and is imported correctly.
+import SmartSwaps from './SmartSwaps';
+import { sendChatMessageAPI } from '../services/api';
 
 const ChatContainer = styled.div`
   position: fixed;
@@ -156,23 +157,13 @@ const Chatbot = ({ goal, onClose, mealPlan, proactiveMessage, clearProactiveMess
 
     try {
       // 3. Make the API call with the PREPARED history and the current message text.
-      const response = await fetch('http://127.0.0.1:8000/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessageText,
-          goal: goal,
-          history: historyForApi,
-          meal_plan: mealPlan
-        })
+      const data = await sendChatMessageAPI({
+        message: userMessageText,
+        goal: goal,
+        history: historyForApi,
+        mealPlan: mealPlan
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'The server returned an error.');
-      }
-
-      const data = await response.json();
       const botResponse = { text: data.reply, isUser: false };
       
       // 4. Add the bot's response to the message list.

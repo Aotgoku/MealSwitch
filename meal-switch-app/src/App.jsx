@@ -18,7 +18,7 @@ import ResultsView from './components/ResultsView';
 import './App.css';
 import MacroCard from './components/MacroCard';
 import ErrorDisplay from './components/ErrorDisplay';
-import { callNutritionAPI, getRecommendations, generateMealPlanAPI, optimizeMealPlanAPI } from './services/api';
+import { callNutritionAPI, getRecommendations, generateMealPlanAPI, optimizeMealPlanAPI, generateShoppingListAPI, createRecipeAPI } from './services/api';
 import ShoppingList from './components/ShoppingList'; // <-- ADD THIS IMPORT
 import RecipeModal from './components/RecipeModal'; // <-- ADD THIS
 
@@ -668,82 +668,60 @@ const handleAnalyze = useCallback(async () => {
 
 // In src/App.jsx
 
-const handleGeneratePlan = async () => {
-    if (!userGoal) {
-      alert("Please select a goal first!");
-      return;
-    }
+    const handleGeneratePlan = async () => {
+        if (!userGoal) {
+            alert("Please select a goal first!");
+            return;
+        }
 
-    const age = parseInt(mealPlanDetails.age, 10);
-    const weight = parseFloat(mealPlanDetails.weight);
-    const height = parseFloat(mealPlanDetails.height);
+        const age = parseInt(mealPlanDetails.age, 10);
+        const weight = parseFloat(mealPlanDetails.weight);
+        const height = parseFloat(mealPlanDetails.height);
 
-    if (isNaN(age) || isNaN(weight) || isNaN(height) || age <= 0 || weight <= 0 || height <= 0) {
-        alert("Please fill in a valid age, weight, and height.");
-        return;
-    }
+        if (isNaN(age) || isNaN(weight) || isNaN(height) || age <= 0 || weight <= 0 || height <= 0) {
+            alert("Please fill in a valid age, weight, and height.");
+            return;
+        }
 
-    setIsGeneratingPlan(true);
-    setShowMealPlanForm(false);
-    
-    // Declaring these here fixes the "not defined" error
-    let response;
-    let data;
+        setIsGeneratingPlan(true);
+        setShowMealPlanForm(false);
 
-    try {
-        response = await fetch('http://127.0.0.1:8000/generate-meal-plan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        try {
+            const data = await generateMealPlanAPI({
                 goal: userGoal,
                 age: age,
                 weight_kg: weight,
                 height_cm: height,
                 gender: mealPlanDetails.gender,
                 activity_level: mealPlanDetails.activityLevel,
-                 dietary_preference: mealPlanDetails.dietaryPreference, 
-            })
-        });
-        
-        data = await response.json();
+                dietary_preference: mealPlanDetails.dietaryPreference, 
+            });
 
-        if (response.ok) {
-           setMealPlanData(data.plan_data);
-           setUserStats(data.user_stats); // This correctly saves the BMI info
-           setShowMealPlan(true);
-        } else {
-           const errorMessage = data.detail[0]?.msg || data.detail || "Failed to generate plan.";
-           throw new Error(errorMessage);
+            setMealPlanData(data.plan_data);
+            setUserStats(data.user_stats);
+            setShowMealPlan(true);
+        } catch (error) {
+            console.error("Error generating meal plan:", error);
+            alert(`Sorry, an error occurred: ${error.message}`);
+        } finally {
+            setIsGeneratingPlan(false);
         }
-    } catch (error) {
-        console.error("Error generating meal plan:", error);
-        alert(`Sorry, an error occurred: ${error.message}`);
-    } finally {
-        setIsGeneratingPlan(false);
-    }
-};
+    };
+
     const handleOptimizePlan = async () => {
         if (!mealPlanData) return;
-        setIsGeneratingPlan(true); // We can reuse the same loading state
+        setIsGeneratingPlan(true);
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/optimize-plan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ plan: mealPlanData }) // Send the current plan to the backend
-            });
-            const data = await response.json();
+            const data = await optimizeMealPlanAPI(mealPlanData);
             if (data.status === 'ok') {
                 setOptimizedPlanData(data.optimized_plan);
 
-                // --- ADD THIS NEW LOGIC ---
                 const swapCount = Object.values(data.optimized_plan.plan).filter(meal => meal.suggestion).length;
                 if (swapCount > 0) {
                     setProactiveMessage(`Hi! I've analyzed your plan and found ${swapCount} smart swap${swapCount > 1 ? 's' : ''}. I've added the new suggestions to your meal plan. Ask me about them!`);
-                    setShowChatbot(true); // Automatically open the chat
+                    setShowChatbot(true);
                 }
-                // --- END OF NEW LOGIC ---
-
             } else {
                 throw new Error("Failed to optimize plan.");
             }
@@ -755,55 +733,35 @@ const handleGeneratePlan = async () => {
         }
     };
 
-   // In src/App.jsx
-const handleGenerateShoppingList = async () => {
-    if (!mealPlanData) return;
+    const handleGenerateShoppingList = async () => {
+        if (!mealPlanData) return;
 
-    const planText = `
-        Breakfast: ${mealPlanData.plan.breakfast.name} - ${mealPlanData.plan.breakfast.description}
-        Lunch: ${mealPlanData.plan.lunch.name} - ${mealPlanData.plan.lunch.description}
-        Dinner: ${mealPlanData.plan.dinner.name} - ${mealPlanData.plan.dinner.description}
-    `;
+        const planText = `
+            Breakfast: ${mealPlanData.plan.breakfast.name} - ${mealPlanData.plan.breakfast.description}
+            Lunch: ${mealPlanData.plan.lunch.name} - ${mealPlanData.plan.lunch.description}
+            Dinner: ${mealPlanData.plan.dinner.name} - ${mealPlanData.plan.dinner.description}
+        `;
 
-    try {
-        const response = await fetch('http://127.0.0.1:8000/generate-shopping-list', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ plan_text: planText })
-        });
-        const data = await response.json();
-
-        if (data.status === 'ok') {
-            // --- THIS IS THE FIX ---
-            // Save the data and show the new component
-            setShoppingListData(data.shopping_list);
-            setShowShoppingList(true);
-            // --- END OF FIX ---
-        } else {
-            throw new Error("Failed to get shopping list.");
+        try {
+            const data = await generateShoppingListAPI(planText);
+            if (data.status === 'ok') {
+                setShoppingListData(data.shopping_list);
+                setShowShoppingList(true);
+            } else {
+                throw new Error("Failed to get shopping list.");
+            }
+        } catch (error) {
+            console.error("Error creating shopping list:", error);
+            alert("Sorry, there was an error creating your shopping list.");
         }
-    } catch (error) {
-        console.error("Error creating shopping list:", error);
-        alert("Sorry, there was an error creating your shopping list.");
-    }
-};
-
-// Place this with your other handler functions like handleGeneratePlan
+    };
 
     const handleCreateRecipe = async (ingredients) => {
         if (!ingredients.trim()) return;
         setIsCreatingRecipe(true);
-        setRecipeData(null); // Clear previous recipe
+        setRecipeData(null);
         try {
-            const response = await fetch('http://127.0.0.1:8000/create-recipe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ingredients: ingredients,
-                    dietary_preference: mealPlanDetails.dietaryPreference
-                })
-            });
-            const data = await response.json();
+            const data = await createRecipeAPI(ingredients, mealPlanDetails.dietaryPreference);
             if (data.status === 'ok') {
                 setRecipeData(data.recipe);
             } else { 

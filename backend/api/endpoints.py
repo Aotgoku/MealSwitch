@@ -107,12 +107,23 @@ async def nutrition_analysis(request: NutritionAnalysisRequest):
         "fiber_g": "N/A" if base_nutrition.get('fiber_g') == "N/A" else round(float(base_nutrition.get('fiber_g', 0)) * scaling_factor, 1),
     }
     
-    # Step 4: Check for an expert swap suggestion
+    # Step 4: Check for an expert swap suggestion and health info
     expert_suggestion = nutrition_service.find_optimized_suggestion(food_name)
+    
+    health_info = None
+    if local_result:
+        health_info = {
+            "calories_saved": float(local_result.get('calories_saved', 0)),
+            "category": str(local_result.get('category', local_result.get('food_category', 'General'))),
+            "risky_for": str(local_result.get('risky_for', 'None'))
+        }
     
     # Step 5: Combine and return the results
     final_result = {
+        "food_name": scaled_nutrition.get("food_name"),
+        "portion_size": scaled_nutrition.get("portion_description"),
         "nutrition": scaled_nutrition,
+        "health_info": health_info,
         "expert_suggestion": expert_suggestion,
     }
 
