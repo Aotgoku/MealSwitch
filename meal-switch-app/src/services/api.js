@@ -88,3 +88,88 @@ export const getFoodCategories = () => {
 export const getHealthStats = () => {
     return fetch(`${API_BASE_URL}/health-stats`).then(handleResponse);
 };
+
+// ========================
+// Authentication & User APIs
+// ========================
+const getAuthHeaders = (token) => ({
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+});
+
+export const registerUserAPI = (userData) => {
+    return fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+    }).then(handleResponse);
+};
+
+export const loginUserAPI = (credentials) => {
+    return fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+    }).then(handleResponse);
+};
+
+export const demoLoginAPI = () => {
+    return fetch(`${API_BASE_URL}/auth/demo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    }).then(handleResponse);
+};
+
+export const getCurrentUserAPI = (token) => {
+    return fetch(`${API_BASE_URL}/auth/me`, {
+        method: 'GET',
+        headers: getAuthHeaders(token)
+    }).then(handleResponse);
+};
+
+export const getUserProfileAPI = (token) => {
+    return fetch(`${API_BASE_URL}/user/profile`, {
+        method: 'GET',
+        headers: getAuthHeaders(token)
+    }).then(handleResponse);
+};
+
+export const updateUserProfileAPI = (profileData, token) => {
+    return fetch(`${API_BASE_URL}/user/profile`, {
+        method: 'PUT',
+        headers: getAuthHeaders(token),
+        body: JSON.stringify(profileData)
+    }).then(handleResponse);
+};
+
+// ========================
+// Meal Plans Database APIs
+// ========================
+export const saveMealPlanAPI = (planData, token) => {
+    return fetch(`${API_BASE_URL}/meal-plans`, {
+        method: 'POST',
+        headers: getAuthHeaders(token),
+        body: JSON.stringify(planData)
+    }).then(handleResponse);
+};
+
+export const getUserMealPlansAPI = (token) => {
+    return fetch(`${API_BASE_URL}/meal-plans`, {
+        method: 'GET',
+        headers: getAuthHeaders(token)
+    }).then(handleResponse);
+};
+
+export const getSingleMealPlanAPI = (planId, token) => {
+    return fetch(`${API_BASE_URL}/meal-plans/${planId}`, {
+        method: 'GET',
+        headers: getAuthHeaders(token)
+    }).then(handleResponse);
+};
+
+export const deleteMealPlanAPI = (planId, token) => {
+    return fetch(`${API_BASE_URL}/meal-plans/${planId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(token)
+    }).then(handleResponse);
+};

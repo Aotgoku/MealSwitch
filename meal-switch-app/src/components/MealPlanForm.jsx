@@ -183,7 +183,7 @@ const MealPlanForm = ({ onGenerate, onClose, isGenerating, details, setDetails }
         {/* --- END OF NEW DROPDOWN --- */}
         
         <GenerateButton onClick={onGenerate} disabled={isGenerating}>
-          {isGenerating ? <Spinner /> : <>✨ Generate My AI Plan</>}
+          {isGenerating ? <Spinner /> : <>Calculate & Generate Plan</>}
         </GenerateButton>
       </FormContainer>
     </ModalOverlay>

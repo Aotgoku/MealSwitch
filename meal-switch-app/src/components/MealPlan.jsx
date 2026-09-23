@@ -108,7 +108,7 @@ const Spinner = styled.div`
 `;
 
 // --- Updated Component Logic ---
-const MealPlan = ({ planData, optimizedPlanData, userStats, onClose, onOptimize, isOptimizing, onGenerateList }) => {
+const MealPlan = ({ planData, optimizedPlanData, userStats, onClose, onOptimize, isOptimizing, onGenerateList, onSavePlan, isSavingPlan, planSaved }) => {
   const displayData = optimizedPlanData || planData;
   if (!displayData || !displayData.plan) return null;
 
@@ -154,7 +154,7 @@ const MealPlan = ({ planData, optimizedPlanData, userStats, onClose, onOptimize,
           <strong>Nutritionist's Note:</strong> {reason}
         </div>
 
-        {/* --- THIS IS THE MODIFIED SECTION --- */}
+        {/* --- ACTION BUTTONS --- */}
         <ButtonContainer>
           {!optimizedPlanData && (
               <OptimizeButton onClick={onOptimize} disabled={isOptimizing}>
@@ -165,12 +165,36 @@ const MealPlan = ({ planData, optimizedPlanData, userStats, onClose, onOptimize,
           <ShoppingListButton onClick={onGenerateList} disabled={isOptimizing}>
             {isOptimizing ? <Spinner /> : <><ShoppingCart /> Generate Shopping List</>}
           </ShoppingListButton>
-        </ButtonContainer>
-        {/* --- END OF MODIFIED SECTION --- */}
 
+          {onSavePlan && (
+            <button
+              onClick={onSavePlan}
+              disabled={isSavingPlan || planSaved}
+              style={{
+                flex: 1,
+                padding: '1rem',
+                fontSize: '1.125rem',
+                fontWeight: 700,
+                background: planSaved ? 'rgba(34, 197, 94, 0.2)' : 'linear-gradient(to right, #f97316, #ec4899)',
+                border: planSaved ? '1px solid #22c55e' : 'none',
+                color: planSaved ? '#86efac' : 'white',
+                borderRadius: '0.75rem',
+                cursor: planSaved ? 'default' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {isSavingPlan ? <Spinner /> : planSaved ? '✓ Plan Saved to DB' : '💾 Save to Profile'}
+            </button>
+          )}
+        </ButtonContainer>
       </PlanContainer>
     </ModalOverlay>
   );
 };
+
 
 export default MealPlan;
