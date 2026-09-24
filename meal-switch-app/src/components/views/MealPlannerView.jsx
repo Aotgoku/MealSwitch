@@ -266,7 +266,7 @@ const MealPlannerView = ({
           </div>
 
           <button
-            onClick={handleGeneratePlan}
+            onClick={handleGenerate}
             disabled={loading}
             className="w-full mt-3 py-3 bg-[#FF7300] text-black rounded-xl text-xs font-bold hover:bg-[#FF8822] disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >

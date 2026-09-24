@@ -1,25 +1,37 @@
 # backend/main.py
 from backend.core import config
+import os
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import logging
 import traceback
 
-# --- CORRECTED IMPORT ---
-# Tell Python to look inside the 'backend' package for the 'api' module
+# API endpoints
 from backend.api import endpoints
+from backend.api import auth
+from backend.api import user
+from backend.api import meal_plans
 
-# --- CORRECTED IMPORT ---
+# Nutrition service (CSV + TF-IDF)
 from backend.services.nutrition_service import df, vectorizer
+
+# Database imports
+from backend.core.database import test_db_connection
+from backend.models import db_models
 
 # --- Basic Logging Configuration ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from backend.core.limiter import limiter
+
 # ========================
-# 1. FastAPI App Initialization
+# FastAPI App Initialization
 # ========================
 app = FastAPI(
     title="MealSwitch API",
@@ -27,10 +39,30 @@ app = FastAPI(
     description="A professionally structured, AI-powered nutrition API."
 )
 
-# ... (The rest of your main.py file stays the same as I gave you before) ...
+# Attach rate limiter and its 429 error handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ========================
+# CORS Configuration
+# ========================
+# In development (APP_ENV=development) we allow the local Vite dev server.
+# In production you MUST set ALLOWED_ORIGINS to your real domain(s).
+_app_env = os.getenv("APP_ENV", "development")
+if _app_env == "production":
+    _raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+    _allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+    if not _allowed_origins:
+        logger.warning(
+            "APP_ENV=production but ALLOWED_ORIGINS is not set — "
+            "CORS will block all cross-origin requests."
+        )
+else:
+    _allowed_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,16 +87,27 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("🚀 MealSwitch API v3.0 starting up...")
-    logger.info(f"📊 Dataset loaded with {len(df)} foods")
-    logger.info(f"🔧 TF-IDF model status: {'Ready' if vectorizer else 'Not available'}")
+    logger.info("MealSwitch API v3.0 starting up...")
+    logger.info(f"Dataset loaded with {len(df)} foods")
+    logger.info(f"TF-IDF model status: {'Ready' if vectorizer else 'Not available'}")
+    logger.info(f"Environment: {_app_env}")
+    logger.info(f"CORS allowed origins: {_allowed_origins}")
+
+    db_ok = test_db_connection()
+    if db_ok:
+        logger.info("PostgreSQL: Connected successfully")
+    else:
+        logger.error("PostgreSQL: Connection FAILED — check DATABASE_URL in .env")
 
 app.include_router(endpoints.router)
+app.include_router(auth.router)
+app.include_router(user.router)
+app.include_router(meal_plans.router)
 
 @app.get("/")
 def root():
     return {"message": "Welcome to the MealSwitch API v3.0"}
 
 if __name__ == "__main__":
-    logger.info("🚀 Starting FastAPI server on http://127.0.0.1:8000")
+    logger.info("Starting FastAPI server on http://127.0.0.1:8000")
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")

@@ -25,7 +25,7 @@ try:
         )
         
         # Initialize the model once and make it available for import
-        GEMINI_MODEL = genai.GenerativeModel(model_name='gemini-pro-latest')
+        GEMINI_MODEL = genai.GenerativeModel(model_name='gemini-2.5-flash')
         
         logger.info("✅ Gemini configured successfully in core.config")
     else:
