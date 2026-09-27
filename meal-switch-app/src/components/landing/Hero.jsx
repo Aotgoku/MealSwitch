@@ -127,8 +127,8 @@ const Hero = ({ onSelectView, onLaunchApp, user, onOpenAuth }) => {
       </nav>
 
       {/* 2. Hero Section */}
-      <section className="relative min-h-screen pt-36 pb-20 flex items-center">
-        <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-14 items-center w-full relative z-10">
+      <section className="relative min-h-screen pt-28 pb-16 sm:pt-36 sm:pb-20 flex items-center">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 grid lg:grid-cols-12 gap-10 lg:gap-14 items-center w-full relative z-10">
           {/* Left Column: Editorial Storytelling */}
           <motion.div
             initial="hidden"
@@ -138,14 +138,14 @@ const Hero = ({ onSelectView, onLaunchApp, user, onOpenAuth }) => {
           >
             <motion.div
               variants={fadeInUp}
-              className="inline-flex items-center px-3.5 py-1.5 rounded-full border border-white/10 bg-white/5 text-[#A19D98] text-[11px] font-sans font-semibold tracking-wider uppercase mb-6"
+              className="inline-flex items-center px-3.5 py-1.5 rounded-full border border-white/10 bg-white/5 text-[#A19D98] text-[11px] font-sans font-semibold tracking-wider uppercase mb-5 sm:mb-6"
             >
               Computational Metabolic Intelligence
             </motion.div>
 
             <motion.h1
               variants={fadeInUp}
-              className="text-5xl md:text-7xl font-serif text-white leading-[1.0] mb-6 tracking-tight"
+              className="text-4xl sm:text-6xl lg:text-7xl font-serif text-white leading-[1.05] sm:leading-[1.0] mb-5 sm:mb-6 tracking-tight"
             >
               Eat what you love. <br />
               <span className="italic text-[#FF7300]">Intelligently.</span>
@@ -153,7 +153,7 @@ const Hero = ({ onSelectView, onLaunchApp, user, onOpenAuth }) => {
 
             <motion.p
               variants={fadeInUp}
-              className="text-base md:text-lg text-[#A19D98] font-sans mb-8 leading-relaxed max-w-lg font-light"
+              className="text-sm sm:text-base md:text-lg text-[#A19D98] font-sans mb-7 sm:mb-8 leading-relaxed max-w-lg font-light"
             >
               Analyze dishes via computer vision, calculate clinical BMR and TDEE energy expenditure, and generate optimized meal schedules calibrated to your exact biometrics.
             </motion.p>

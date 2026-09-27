@@ -27,6 +27,14 @@ const LauncherButton = styled.button`
   &:hover {
     background: #FF8822;
   }
+
+  @media (max-width: 768px) {
+    bottom: 5.25rem;
+    right: 1.25rem;
+    height: 40px;
+    padding: 0 1rem;
+    font-size: 0.8rem;
+  }
 `;
 
 const DrawerOverlay = styled.div`

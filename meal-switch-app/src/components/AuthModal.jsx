@@ -18,6 +18,7 @@ const ModalOverlay = styled.div`
   justify-content: center;
   z-index: 2000;
   padding: 1rem;
+  overflow-y: auto;
 `;
 
 const ModalCard = styled.div`
@@ -26,11 +27,25 @@ const ModalCard = styled.div`
   border-radius: 16px;
   width: 100%;
   max-width: 420px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
-  overflow: hidden;
   position: relative;
   animation: modalFadeIn 0.25s ease-out;
   font-family: 'DM Sans', sans-serif;
+
+  /* Subtle scrollbar when contents overflow on very short displays */
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+  }
 
   @keyframes modalFadeIn {
     from {
@@ -67,13 +82,13 @@ const CloseButton = styled.button`
 `;
 
 const ModalHeader = styled.div`
-  padding: 2.5rem 2rem 1.25rem;
+  padding: 1.5rem 1.75rem 0.75rem;
   text-align: center;
 `;
 
 const Title = styled.h2`
-  margin: 0 0 0.4rem;
-  font-size: 2rem;
+  margin: 0 0 0.25rem;
+  font-size: 1.65rem;
   font-weight: 400;
   font-family: 'Instrument Serif', Georgia, serif;
   color: #FFFFFF;
@@ -83,7 +98,7 @@ const Title = styled.h2`
 const Subtitle = styled.p`
   margin: 0;
   color: #A19D98;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 300;
 `;
 
@@ -91,19 +106,19 @@ const TabContainer = styled.div`
   display: flex;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 9999px;
-  padding: 4px;
-  margin: 0 2rem 1.5rem;
+  padding: 3px;
+  margin: 0 1.75rem 0.85rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
 `;
 
 const Tab = styled.button`
   flex: 1;
-  padding: 0.55rem;
+  padding: 0.45rem;
   background: ${props => props.$active ? '#FF7300' : 'transparent'};
   color: ${props => props.$active ? '#000000' : '#A19D98'};
   border: none;
   border-radius: 9999px;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 700;
   font-family: 'DM Sans', sans-serif;
   cursor: pointer;
@@ -115,10 +130,10 @@ const Tab = styled.button`
 `;
 
 const Form = styled.form`
-  padding: 0 2rem 2.25rem;
+  padding: 0 1.75rem 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 `;
 
 const InputGroup = styled.div`
@@ -127,7 +142,7 @@ const InputGroup = styled.div`
 
 const InputIcon = styled.div`
   position: absolute;
-  left: 1rem;
+  left: 0.9rem;
   top: 50%;
   transform: translateY(-50%);
   color: #A19D98;
@@ -138,12 +153,12 @@ const InputIcon = styled.div`
 
 const Input = styled.input`
   width: 100%;
-  padding: 0.85rem 1rem 0.85rem 2.75rem;
+  padding: 0.72rem 0.9rem 0.72rem 2.5rem;
   background: #171717;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  border-radius: 12px;
   color: #FFFFFF;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   outline: none;
   transition: border-color 0.2s;
   font-family: 'DM Sans', sans-serif;
@@ -158,13 +173,13 @@ const Input = styled.input`
 `;
 
 const SubmitButton = styled.button`
-  margin-top: 0.5rem;
-  padding: 0.9rem;
+  margin-top: 0.25rem;
+  padding: 0.78rem;
   background: #FF7300;
   color: #000000;
   border: none;
   border-radius: 9999px;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 700;
   font-family: 'DM Sans', sans-serif;
   cursor: pointer;
@@ -187,15 +202,15 @@ const SubmitButton = styled.button`
 `;
 
 const DemoCard = styled.div`
-  margin: 0 2rem 1.25rem;
+  margin: 0 1.75rem 0.85rem;
   background: linear-gradient(135deg, rgba(255, 115, 0, 0.12), rgba(255, 255, 255, 0.02));
   border: 1px solid rgba(255, 115, 0, 0.35);
-  border-radius: 18px;
-  padding: 1rem 1.15rem;
+  border-radius: 14px;
+  padding: 0.75rem 0.95rem;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  box-shadow: 0 0 30px -10px rgba(255, 115, 0, 0.2);
+  gap: 0.45rem;
+  box-shadow: 0 0 25px -10px rgba(255, 115, 0, 0.2);
 `;
 
 const DemoBadge = styled.div`
@@ -344,7 +359,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
         </CloseButton>
 
         <ModalHeader>
-          <img src={logoImg} alt="MealSwitch" style={{ width: 44, height: 44, objectFit: 'contain', margin: '0 auto 0.85rem', display: 'block' }} />
+          <img src={logoImg} alt="MealSwitch" style={{ width: 36, height: 36, objectFit: 'contain', margin: '0 auto 0.5rem', display: 'block' }} />
           <Title>{isLogin ? 'Welcome Back' : 'Create Account'}</Title>
           <Subtitle>
             {isLogin
@@ -356,10 +371,10 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
         {/* Quick Demo Access */}
         <DemoCard>
           <DemoBadge>
-            <span>Instant Sandbox</span>
+            <span>Guest Demo Access</span>
           </DemoBadge>
           <DemoDescription>
-            Test MealSwitch with a pre-configured guest session without registration. Includes pre-seeded biometrics and sample PostgreSQL meal plans.
+            Explore MealSwitch instantly with a pre-configured guest profile. No sign-up required.
           </DemoDescription>
           <DemoBtn type="button" onClick={handleDemoLogin} disabled={demoLoading || loading}>
             {demoLoading ? (

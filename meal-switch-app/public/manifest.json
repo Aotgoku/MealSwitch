@@ -1,0 +1,23 @@
+{
+  "short_name": "MealSwitch",
+  "name": "MealSwitch — Clinical Metabolic Intelligence & Meal Engine",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "description": "Scan any meal for instant nutrition data, generate personalized AI meal plans, and discover smarter food swaps."
+}

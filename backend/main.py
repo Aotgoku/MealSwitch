@@ -1,4 +1,12 @@
 # backend/main.py
+import sys
+from pathlib import Path
+
+# Ensure repository root is in sys.path regardless of execution working directory
+_repo_root = str(Path(__file__).resolve().parent.parent)
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
 from backend.core import config
 import os
 import uvicorn
@@ -47,22 +55,18 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS Configuration
 # ========================
 # In development (APP_ENV=development) we allow the local Vite dev server.
-# In production you MUST set ALLOWED_ORIGINS to your real domain(s).
+# In production you can set ALLOWED_ORIGINS to specific domains.
+# Also supports regex for all Vercel deployments (*.vercel.app).
 _app_env = os.getenv("APP_ENV", "development")
-if _app_env == "production":
-    _raw_origins = os.getenv("ALLOWED_ORIGINS", "")
-    _allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
-    if not _allowed_origins:
-        logger.warning(
-            "APP_ENV=production but ALLOWED_ORIGINS is not set — "
-            "CORS will block all cross-origin requests."
-        )
-else:
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+if not _allowed_origins:
     _allowed_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

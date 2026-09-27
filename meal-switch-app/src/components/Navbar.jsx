@@ -14,6 +14,10 @@ const Nav = styled.nav`
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding: 1rem 2rem;
   font-family: 'DM Sans', sans-serif;
+
+  @media (max-width: 768px) {
+    padding: 0.75rem 1rem;
+  }
 `;
 
 const NavInner = styled.div`
@@ -176,19 +180,6 @@ const LogoutBtn = styled.button`
   }
 `;
 
-const MobileTabBar = styled.div`
-  display: none;
-  background: rgba(10, 10, 10, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 0.5rem 0.75rem;
-  gap: 0.3rem;
-  overflow-x: auto;
-
-  @media (max-width: 880px) {
-    display: flex;
-  }
-`;
-
 const Navbar = ({
   currentView,
   onSelectView,
@@ -253,20 +244,6 @@ const Navbar = ({
           </RightArea>
         </NavInner>
       </Nav>
-
-      <MobileTabBar>
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <TabBtn
-            key={id}
-            $active={currentView === id}
-            onClick={() => onSelectView(id)}
-            style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', whiteSpace: 'nowrap' }}
-          >
-            <Icon size={13} />
-            <span>{label}</span>
-          </TabBtn>
-        ))}
-      </MobileTabBar>
     </>
   );
 };

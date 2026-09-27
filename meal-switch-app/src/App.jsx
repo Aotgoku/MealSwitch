@@ -9,6 +9,7 @@ import DashboardView from './components/views/DashboardView';
 import AICoachDrawer from './components/AICoachDrawer';
 import AuthModal from './components/AuthModal';
 import Footer from './components/Footer';
+import BottomNav from './components/BottomNav';
 import { getCurrentUserAPI, getUserProfileAPI, saveMealPlanAPI } from './services/api';
 import './App.css';
 
@@ -73,7 +74,7 @@ const App = () => {
         setPendingPlanToSave(null);
         setToastMessage({
           type: 'success',
-          text: 'Meal plan successfully synchronized to your PostgreSQL cloud account.'
+          text: 'Meal plan saved to your account.'
         });
         setTimeout(() => setToastMessage(null), 5000);
       } catch (err) {
@@ -99,7 +100,7 @@ const App = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#0A0A0A] text-[#F5F5F5] font-sans selection:bg-[#FF7300]/30 selection:text-white">
+    <div className="w-full min-h-screen bg-[#0A0A0A] text-[#F5F5F5] font-sans selection:bg-[#FF7300]/30 selection:text-white pb-16 md:pb-0">
       {/* 1. If in Landing Page view, render the Ultra-Sleek Video Hero Landing Page */}
       {currentView === 'landing' ? (
         <LandingPage
@@ -143,7 +144,7 @@ const App = () => {
                     setIsAuthOpen(true);
                   }}
                   onPlanSaved={() => {
-                    triggerToast('Meal plan saved to PostgreSQL database.', 'success');
+                    triggerToast('Meal plan saved to your account.', 'success');
                   }}
                   onShowToast={triggerToast}
                 />
@@ -193,6 +194,12 @@ const App = () => {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onAuthSuccess={handleAuthSuccess}
+      />
+
+      {/* Mobile Ergonomic Bottom Navigation Dock */}
+      <BottomNav
+        currentView={currentView}
+        onSelectView={setCurrentView}
       />
     </div>
   );
