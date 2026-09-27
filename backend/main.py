@@ -75,19 +75,29 @@ app.add_middleware(
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     logger.error(f"HTTP Exception: {exc.status_code} - {exc.detail}")
-    return JSONResponse(
+    response = JSONResponse(
         status_code=exc.status_code,
         content={"status": "error", "error": exc.detail},
     )
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unexpected error: {exc}")
     logger.error(traceback.format_exc())
-    return JSONResponse(
+    response = JSONResponse(
         status_code=500,
-        content={"status": "error", "error": "An unexpected internal error occurred"},
+        content={"status": "error", "error": f"Internal Error: {str(exc)}"},
     )
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 @app.on_event("startup")
 async def startup_event():
@@ -100,6 +110,13 @@ async def startup_event():
     db_ok = test_db_connection()
     if db_ok:
         logger.info("PostgreSQL: Connected successfully")
+        try:
+            from backend.models.db_models import Base
+            from backend.core.database import engine
+            Base.metadata.create_all(bind=engine)
+            logger.info("PostgreSQL: Tables verified/created successfully")
+        except Exception as e:
+            logger.error(f"PostgreSQL table creation error: {e}")
     else:
         logger.error("PostgreSQL: Connection FAILED — check DATABASE_URL in .env")
 
